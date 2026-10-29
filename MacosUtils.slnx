@@ -1,0 +1,7 @@
+<Solution>
+  <Project Path="MacosUtils.AI/MacosUtils.AI.csproj" />
+  <Project Path="MacosUtils.App/MacosUtils.App.csproj" />
+  <Project Path="MacosUtils.Cli/MacosUtils.Cli.csproj" />
+  <Project Path="MacosUtils.Core/MacosUtils.Core.csproj" />
+  <Project Path="MacosUtils.Tests/MacosUtils.Tests.csproj" />
+</Solution>

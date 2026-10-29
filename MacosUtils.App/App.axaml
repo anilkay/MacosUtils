@@ -1,0 +1,148 @@
+<Application xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             x:Class="MacosUtils.App.App"
+             Name="macOS Utils"
+             RequestedThemeVariant="Default">
+    <!-- Replaces Avalonia's default app menu, which offers "About Avalonia". -->
+    <NativeMenu.Menu>
+        <NativeMenu>
+            <NativeMenuItem Header="About macOS Utils" Click="About_Click" />
+        </NativeMenu>
+    </NativeMenu.Menu>
+
+    <Application.Resources>
+        <ResourceDictionary>
+            <!-- Follows the system's light or dark appearance; macOS-like neutral colours. -->
+            <ResourceDictionary.ThemeDictionaries>
+                <ResourceDictionary x:Key="Light">
+                    <SolidColorBrush x:Key="WindowBrush" Color="#F5F5F7" />
+                    <SolidColorBrush x:Key="SidebarBrush" Color="#ECECEE" />
+                    <SolidColorBrush x:Key="PanelBrush" Color="#FFFFFF" />
+                    <SolidColorBrush x:Key="BorderBrush" Color="#D9D9DE" />
+                    <SolidColorBrush x:Key="TextBrush" Color="#1D1D1F" />
+                    <SolidColorBrush x:Key="MutedTextBrush" Color="#6E6E73" />
+                    <SolidColorBrush x:Key="DangerBrush" Color="#D70015" />
+                    <SolidColorBrush x:Key="SuccessBrush" Color="#248A3D" />
+                    <SolidColorBrush x:Key="UserBubbleBrush" Color="#E8F0FE" />
+                    <SolidColorBrush x:Key="NoteBrush" Color="#EBEBEE" />
+                </ResourceDictionary>
+                <ResourceDictionary x:Key="Dark">
+                    <SolidColorBrush x:Key="WindowBrush" Color="#1E1E20" />
+                    <SolidColorBrush x:Key="SidebarBrush" Color="#2A2A2D" />
+                    <SolidColorBrush x:Key="PanelBrush" Color="#2C2C2E" />
+                    <SolidColorBrush x:Key="BorderBrush" Color="#3E3E42" />
+                    <SolidColorBrush x:Key="TextBrush" Color="#F5F5F7" />
+                    <SolidColorBrush x:Key="MutedTextBrush" Color="#A1A1A6" />
+                    <SolidColorBrush x:Key="DangerBrush" Color="#FF453A" />
+                    <SolidColorBrush x:Key="SuccessBrush" Color="#32D74B" />
+                    <SolidColorBrush x:Key="UserBubbleBrush" Color="#1F3350" />
+                    <SolidColorBrush x:Key="NoteBrush" Color="#262628" />
+                </ResourceDictionary>
+            </ResourceDictionary.ThemeDictionaries>
+            <FontFamily x:Key="MonoFont">SF Mono, Menlo, Monaco, Cascadia Mono, Consolas, monospace</FontFamily>
+        </ResourceDictionary>
+    </Application.Resources>
+
+    <Application.Styles>
+        <FluentTheme DensityStyle="Compact" />
+        <StyleInclude Source="avares://Avalonia.Controls.DataGrid/Themes/Fluent.xaml" />
+
+        <Style Selector="Window">
+            <Setter Property="Background" Value="{DynamicResource WindowBrush}" />
+            <Setter Property="Foreground" Value="{DynamicResource TextBrush}" />
+            <Setter Property="FontSize" Value="13" />
+        </Style>
+
+        <Style Selector="Border.sidebar">
+            <Setter Property="Background" Value="{DynamicResource SidebarBrush}" />
+            <Setter Property="BorderBrush" Value="{DynamicResource BorderBrush}" />
+            <Setter Property="BorderThickness" Value="0,0,1,0" />
+        </Style>
+
+        <Style Selector="TextBlock.appTitle">
+            <Setter Property="FontSize" Value="17" />
+            <Setter Property="FontWeight" Value="SemiBold" />
+        </Style>
+        <Style Selector="TextBlock.pageTitle">
+            <Setter Property="FontSize" Value="22" />
+            <Setter Property="FontWeight" Value="SemiBold" />
+        </Style>
+        <Style Selector="TextBlock.muted, SelectableTextBlock.muted">
+            <Setter Property="Foreground" Value="{DynamicResource MutedTextBrush}" />
+        </Style>
+        <Style Selector="TextBlock.error, SelectableTextBlock.error">
+            <Setter Property="Foreground" Value="{DynamicResource DangerBrush}" />
+        </Style>
+        <Style Selector="TextBlock.success">
+            <Setter Property="Foreground" Value="{DynamicResource SuccessBrush}" />
+        </Style>
+        <Style Selector="TextBlock.label">
+            <Setter Property="VerticalAlignment" Value="Center" />
+        </Style>
+        <Style Selector="TextBlock.navIcon">
+            <Setter Property="Width" Value="26" />
+            <Setter Property="FontSize" Value="15" />
+            <Setter Property="VerticalAlignment" Value="Center" />
+        </Style>
+        <Style Selector="TextBlock.mono">
+            <Setter Property="FontFamily" Value="{StaticResource MonoFont}" />
+        </Style>
+        <Style Selector="SelectableTextBlock.mono">
+            <Setter Property="FontFamily" Value="{StaticResource MonoFont}" />
+        </Style>
+        <Style Selector="TextBox.mono">
+            <Setter Property="FontFamily" Value="{StaticResource MonoFont}" />
+        </Style>
+
+        <Style Selector="Button">
+            <Setter Property="Padding" Value="12,5" />
+            <Setter Property="HorizontalContentAlignment" Value="Center" />
+            <Setter Property="VerticalAlignment" Value="Center" />
+        </Style>
+        <Style Selector="CheckBox, ComboBox, TextBox, NumericUpDown, TextBlock.label">
+            <Setter Property="VerticalAlignment" Value="Center" />
+        </Style>
+        <Style Selector="WrapPanel.toolbar > :is(Control)">
+            <Setter Property="Margin" Value="0,0,8,8" />
+        </Style>
+
+        <Style Selector="ListBox.nav">
+            <Setter Property="Background" Value="Transparent" />
+        </Style>
+        <Style Selector="ListBox.nav ListBoxItem">
+            <Setter Property="Padding" Value="10,7" />
+            <Setter Property="Margin" Value="6,1" />
+            <Setter Property="CornerRadius" Value="6" />
+        </Style>
+
+        <Style Selector="DataGrid">
+            <Setter Property="Background" Value="{DynamicResource PanelBrush}" />
+            <Setter Property="BorderBrush" Value="{DynamicResource BorderBrush}" />
+            <Setter Property="BorderThickness" Value="1" />
+            <Setter Property="CornerRadius" Value="6" />
+        </Style>
+        <Style Selector="DataGridRow.warn">
+            <Setter Property="Foreground" Value="{DynamicResource DangerBrush}" />
+        </Style>
+        <Style Selector="DataGridRow.dim">
+            <Setter Property="Foreground" Value="{DynamicResource MutedTextBrush}" />
+        </Style>
+
+        <Style Selector="Border.bubble">
+            <Setter Property="CornerRadius" Value="8" />
+            <Setter Property="Padding" Value="10,8" />
+            <Setter Property="Margin" Value="0,0,0,8" />
+        </Style>
+        <Style Selector="Border.bubble.user">
+            <Setter Property="Background" Value="{DynamicResource UserBubbleBrush}" />
+        </Style>
+        <Style Selector="Border.bubble.assistant">
+            <Setter Property="Background" Value="{DynamicResource PanelBrush}" />
+            <Setter Property="BorderBrush" Value="{DynamicResource BorderBrush}" />
+            <Setter Property="BorderThickness" Value="1" />
+        </Style>
+        <Style Selector="Border.bubble.note">
+            <Setter Property="Background" Value="{DynamicResource NoteBrush}" />
+        </Style>
+    </Application.Styles>
+</Application>

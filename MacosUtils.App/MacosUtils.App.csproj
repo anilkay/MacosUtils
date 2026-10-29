@@ -1,0 +1,34 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!--
+    The Avalonia desktop app. Built for macOS (osx-arm64 / osx-x64, packaged as MacosUtils.app by
+    macOS/package-app.sh); it also starts on Windows and Linux for development, where the
+    Mac-only screens say so instead of showing data.
+  -->
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net10.0</TargetFramework>
+    <AssemblyName>MacosUtils</AssemblyName>
+    <RootNamespace>MacosUtils.App</RootNamespace>
+    <AvaloniaUseCompiledBindingsByDefault>true</AvaloniaUseCompiledBindingsByDefault>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <AvaloniaResource Include="..\assets\logo\png\256.png" Link="Assets\logo.png" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Avalonia" Version="12.1.4" />
+    <PackageReference Include="Avalonia.Desktop" Version="12.1.4" />
+    <PackageReference Include="Avalonia.Themes.Fluent" Version="12.1.4" />
+    <PackageReference Include="Avalonia.Fonts.Inter" Version="12.1.4" />
+    <PackageReference Include="Avalonia.Controls.DataGrid" Version="12.1.2" />
+    <PackageReference Include="Microsoft.Extensions.Logging" Version="10.0.11" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\MacosUtils.Core\MacosUtils.Core.csproj" />
+    <ProjectReference Include="..\MacosUtils.AI\MacosUtils.AI.csproj" />
+  </ItemGroup>
+
+</Project>

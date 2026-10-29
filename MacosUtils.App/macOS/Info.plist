@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<!-- The macOS app bundle's description; package-app.sh fills in the version. -->
+<plist version="1.0">
+<dict>
+    <key>CFBundleName</key>
+    <string>macOS Utils</string>
+    <key>CFBundleDisplayName</key>
+    <string>macOS Utils</string>
+    <key>CFBundleIdentifier</key>
+    <string>io.github.anilkay.MacosUtils</string>
+    <key>CFBundleExecutable</key>
+    <string>MacosUtils</string>
+    <key>CFBundleIconFile</key>
+    <string>AppIcon</string>
+    <key>CFBundlePackageType</key>
+    <string>APPL</string>
+    <key>CFBundleInfoDictionaryVersion</key>
+    <string>6.0</string>
+    <key>CFBundleShortVersionString</key>
+    <string>0.0.0</string>
+    <key>CFBundleVersion</key>
+    <string>0.0.0</string>
+    <key>LSApplicationCategoryType</key>
+    <string>public.app-category.utilities</string>
+    <key>NSHighResolutionCapable</key>
+    <true/>
+    <!-- The text of macOS's first-use prompts for the folders the utilities scan. -->
+    <key>NSDocumentsFolderUsageDescription</key>
+    <string>macOS Utils reads file names and sizes in Documents to find large and duplicate files.</string>
+    <key>NSDesktopFolderUsageDescription</key>
+    <string>macOS Utils reads file names and sizes on the Desktop to find large and duplicate files.</string>
+    <key>NSDownloadsFolderUsageDescription</key>
+    <string>macOS Utils reads file names and sizes in Downloads to find large and duplicate files.</string>
+    <key>NSRemovableVolumesUsageDescription</key>
+    <string>macOS Utils reads file names and sizes on external disks when you scan them.</string>
+</dict>
+</plist>

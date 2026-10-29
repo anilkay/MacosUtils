@@ -1,0 +1,72 @@
+name: release
+
+# Push a tag such as v0.0.1 to build, test and publish a release: the app as a zipped .app bundle
+# and the mutils command-line tool, each for Apple silicon (osx-arm64) and Intel (osx-x64).
+on:
+  push:
+    tags: ['v*']
+
+permissions:
+  contents: write
+
+jobs:
+  test:
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-dotnet@v5
+        with:
+          global-json-file: global.json
+      - run: dotnet test --configuration Release
+
+  build:
+    needs: test
+    strategy:
+      matrix:
+        rid: [osx-arm64, osx-x64]
+    # Both architectures are published on the Apple silicon runner (cross-publishing works).
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-dotnet@v5
+        with:
+          global-json-file: global.json
+      - name: Publish and package
+        run: |
+          version='${{ github.ref_name }}'
+          version=${version#v}
+          brew install librsvg
+
+          dotnet publish MacosUtils.App --configuration Release --runtime ${{ matrix.rid }} --self-contained \
+            -p:Version=$version --output publish/MacosUtils
+          # "MacosUtils.app" in a zip, which Finder opens with a double click.
+          bash MacosUtils.App/macOS/package-app.sh publish/MacosUtils "$version" publish
+          ditto -c -k --keepParent "publish/MacosUtils.app" "MacosUtils-$version-${{ matrix.rid }}.zip"
+
+          dotnet publish MacosUtils.Cli --configuration Release --runtime ${{ matrix.rid }} --self-contained \
+            -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true -p:Version=$version \
+            -p:DebugType=none --output publish/cli
+          # tar keeps the executable bit; the apphost is already ad-hoc signed by the SDK.
+          tar -czf "MacosUtils-cli-$version-${{ matrix.rid }}.tar.gz" -C publish/cli mutils
+      - uses: actions/upload-artifact@v6
+        with:
+          name: ${{ matrix.rid }}
+          path: |
+            MacosUtils-*.zip
+            MacosUtils-cli-*.tar.gz
+          if-no-files-found: error
+
+  release:
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/download-artifact@v7
+        with:
+          path: dist
+          merge-multiple: true
+      - name: Create GitHub release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release create '${{ github.ref_name }}' dist/* --repo '${{ github.repository }}' \
+            --title 'macOS Utils ${{ github.ref_name }}' --generate-notes

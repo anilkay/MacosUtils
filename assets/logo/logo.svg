@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024">
+  <!-- macOS Utils: four utility tiles on a blue rounded square (the macOS icon grid: 824 px body, 100 px margin). -->
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#4C8DF6"/>
+      <stop offset="1" stop-color="#2B5CD6"/>
+    </linearGradient>
+  </defs>
+  <rect x="100" y="100" width="824" height="824" rx="185" fill="url(#bg)"/>
+  <rect x="250" y="250" width="230" height="230" rx="48" fill="#FFFFFF"/>
+  <rect x="544" y="250" width="230" height="230" rx="48" fill="#FFFFFF" fill-opacity="0.72"/>
+  <rect x="250" y="544" width="230" height="230" rx="48" fill="#FFFFFF" fill-opacity="0.72"/>
+  <rect x="544" y="544" width="230" height="230" rx="48" fill="#FFFFFF"/>
+</svg>

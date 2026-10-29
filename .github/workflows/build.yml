@@ -1,0 +1,64 @@
+name: build
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  # The whole solution builds and the tests run on every OS; the Mac-only tests (Trash, Keychain,
+  # sysctl, lsof...) do real work on the macOS runner and return at once elsewhere.
+  test:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [macos-latest, ubuntu-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-dotnet@v5
+        with:
+          global-json-file: global.json
+      - run: dotnet build --configuration Release
+      - run: dotnet test --configuration Release --no-build
+
+  # The real app on a real Mac: the CLI against the live system, then the .app bundle opened the
+  # way a double click does.
+  macos-app:
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-dotnet@v5
+        with:
+          global-json-file: global.json
+      - name: Run the CLI commands against this Mac
+        run: |
+          dotnet build MacosUtils.Cli --configuration Release
+          failed=0
+          for command in "time" "system" "dotnet" "java" "python" "node" "features" "processes 5" "disks" "network" \
+                         "firewall" "ports" "startup" "users" "envlist LoginShell 5" "largest $HOME 3" "foldersize $HOME 3" \
+                         "hash /etc/hosts SHA-256"; do
+            echo "::group::mutils $command"
+            output=$(dotnet MacosUtils.Cli/bin/Release/net10.0/mutils.dll $command 2>&1) || failed=1
+            echo "$output" | head -30
+            if echo "$output" | grep -q '^Error:'; then failed=1; fi
+            echo "::endgroup::"
+          done
+          exit $failed
+      - name: Package the macOS app and open it
+        run: |
+          brew install librsvg
+          dotnet publish MacosUtils.App --configuration Release --runtime osx-arm64 --self-contained --output publish/MacosUtils
+          bash MacosUtils.App/macOS/package-app.sh publish/MacosUtils 0.0.0 publish
+          ditto -c -k --keepParent "publish/MacosUtils.app" MacosUtils-osx-arm64.zip
+          # Opened the way a double click does; it must still be running a few seconds later.
+          open "publish/MacosUtils.app"
+          sleep 15
+          pgrep -x MacosUtils
+          pkill -x MacosUtils
+          ls ~/Library/Logs/MacosUtils/ && tail -n 20 ~/Library/Logs/MacosUtils/*.log
+      # The packaged app, to try on a Mac before a release.
+      - uses: actions/upload-artifact@v6
+        with:
+          name: MacosUtils-osx-arm64-app
+          path: MacosUtils-osx-arm64.zip

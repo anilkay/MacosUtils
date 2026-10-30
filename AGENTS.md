@@ -22,7 +22,7 @@ MacosUtils.Core/
 ├── Plist.cs               # XML plists parsed directly, binary ones via /usr/bin/plutil
 ├── Interop/ObjC.cs        # minimal Objective-C runtime P/Invoke (NSFileManager, NSURL)
 ├── IO/                    # FileScanner, DuplicateFinder, Trash (NSFileManager), Finder (open -R), Volumes, ScanExclusions
-├── Net/                   # NetworkInfo (ping), TcpTraceroute (/usr/sbin/traceroute -P tcp), FirewallInfo (socketfilterfw + lsof)
+├── Net/                   # NetworkInfo (ping), TcpTraceroute (SYN probes + unprivileged ICMP socket), FirewallInfo (socketfilterfw + lsof)
 ├── Logging/               # daily rolling file logger
 └── SystemInfo/            # SystemDetails (sysctl/vm_stat/CoreGraphics), MacFeatures, StartupItems (launchd), LocalUsers (dscacheutil),
                            # EnvironmentInfo, RuntimeInstallation + RuntimeDetectors (Java/Python/Node/.NET)
@@ -54,6 +54,9 @@ MacosUtils.Tests/
 - **`SpecialFolder.ApplicationData` is `~/.config` on macOS.** Use `AppPaths` for settings and logs.
 - **Culture.** `ByteFormatter` follows the user's culture ("1,5 KB" on a Turkish Mac); tests pin the invariant culture.
 - **Keychain** uses the classic `SecKeychain*` generic-password calls (service "MacosUtils AI Chat", account = endpoint host). They are deprecated but supported; the Keychain test returns quietly when the keychain is locked.
+- **TCP traceroute without root.** `/usr/sbin/traceroute -P tcp` fails for normal users ("pcap_activate() failed": it reads the SYN-ACK through /dev/bpf). `TcpTraceroute` sends ordinary TCP connects with `IP_TTL` set and reads Time Exceeded from an ICMP **datagram** socket (unprivileged on macOS, the one ping uses); root gets a raw socket. Received ICMP packets start with the IPv4 header, which `TryParseIcmpReply` skips. `build.yml` prints a trace with and without sudo to compare.
+- **lsof exits 1** when one `-i` selection matched nothing, even with output for the others: parse its output whatever the exit code.
+- **root** has `/bin/sh` on every Mac but is disabled unless `dscl . -read /Users/root AuthenticationAuthority` shows a ShadowHash.
 - **XML plists are parsed with DTD processing ignored** and no resolver, so a plist can never make the app fetch apple.com.
 
 ## Packaging

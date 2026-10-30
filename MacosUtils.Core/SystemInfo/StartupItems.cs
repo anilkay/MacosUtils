@@ -74,6 +74,16 @@ public static class StartupItems
             command = string.Join(' ', new[] { program }.Concat(arguments.Skip(1)).Select(Quote));
         else
             command = string.Join(' ', arguments.Select(Quote));
+        // Jobs an app registers through SMAppService name their program inside the app bundle.
+        if (command.Length == 0 && dict.GetValueOrDefault("BundleProgram") is string bundleProgram)
+        {
+            var bundles = (dict.GetValueOrDefault("AssociatedBundleIdentifiers") as List<object?>)?.OfType<string>().ToList() ?? [];
+            if (dict.GetValueOrDefault("AssociatedBundleIdentifiers") is string single)
+                bundles = [single];
+            command = bundles.Count > 0 ? $"{bundleProgram} (in {string.Join(", ", bundles)})" : bundleProgram;
+        }
+        if (command.Length == 0)
+            command = "(no program in the plist)";
 
         // KeepAlive is either a bool or a dictionary of conditions (which also means "restart it").
         var keepAlive = dict.GetValueOrDefault("KeepAlive") switch

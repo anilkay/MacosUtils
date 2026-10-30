@@ -13,11 +13,14 @@ public sealed record LocalUserAccount(
 /// <summary>
 /// Read-only view of the local user accounts from Directory Services (dscacheutil). The many
 /// system accounts (_www, daemon, nobody...) are left out: only accounts with a UID of 500 or more,
-/// the range macOS gives to people, plus root when it has a login shell.
+/// the range macOS gives to people, plus root when it has a login shell. root has /bin/sh on every
+/// Mac but is disabled unless someone enabled it (Directory Utility or "dsenableroot"), so it is
+/// listed as able to log in only when Directory Services holds a password for it.
 /// </summary>
 public static class LocalUsers
 {
     private const string DsCacheUtil = "/usr/bin/dscacheutil";
+    private const string Dscl = "/usr/bin/dscl";
 
     /// <summary>Returns the accounts sorted by name; empty when not on macOS or the query fails.</summary>
     public static IReadOnlyList<LocalUserAccount> GetAccounts()
@@ -28,11 +31,13 @@ public static class LocalUsers
         if (users is null)
             throw new InvalidOperationException("Could not read the user accounts (dscacheutil failed).");
         var admins = Processes.TryRun(DsCacheUtil, ["-q", "group", "-a", "name", "admin"]) ?? "";
-        return Parse(users, ParseGroupMembers(admins));
+        // A disabled root has no AuthenticationAuthority (dscl then fails); an enabled one has a ShadowHash.
+        var rootAuthority = Processes.TryRun(Dscl, [".", "-read", "/Users/root", "AuthenticationAuthority"]) ?? "";
+        return Parse(users, ParseGroupMembers(admins), rootAuthority.Contains("ShadowHash", StringComparison.Ordinal));
     }
 
     /// <summary>Parses "dscacheutil -q user" output; public for tests.</summary>
-    public static IReadOnlyList<LocalUserAccount> Parse(string output, IReadOnlySet<string> admins)
+    public static IReadOnlyList<LocalUserAccount> Parse(string output, IReadOnlySet<string> admins, bool rootEnabled = false)
     {
         var accounts = new Dictionary<string, LocalUserAccount>(StringComparer.Ordinal);
         foreach (var record in Records(output))
@@ -54,7 +59,7 @@ public static class LocalUsers
                 record.GetValueOrDefault("dir", ""),
                 shell,
                 admins.Contains(name) || uid == 0,
-                canLogIn);
+                canLogIn && (uid != 0 || rootEnabled));
         }
         return accounts.Values.OrderBy(a => a.Name, StringComparer.OrdinalIgnoreCase).ToList();
     }

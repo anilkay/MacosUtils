@@ -74,7 +74,28 @@ public class ParserTests
         Assert.True(ayse.CanLogIn);
         Assert.Equal("Ayşe Yılmaz", ayse.FullName);
         Assert.False(accounts.Single(a => a.Name == "misafir").CanLogIn);
-        Assert.Equal("Administrator", LocalUsers.FormatType(accounts.Single(a => a.Name == "root")));
+        var root = accounts.Single(a => a.Name == "root");
+        Assert.Equal("Administrator", LocalUsers.FormatType(root));
+        Assert.False(root.CanLogIn); // root has /bin/sh on every Mac but is disabled by default
+
+        var withRootEnabled = LocalUsers.Parse(output, new HashSet<string>(), rootEnabled: true);
+        Assert.True(withRootEnabled.Single(a => a.Name == "root").CanLogIn);
+    }
+
+    [Fact]
+    public void Launchd_job_registered_by_an_app_names_its_bundle_program()
+    {
+        var dict = new Dictionary<string, object?>
+        {
+            ["Label"] = "com.example.helper",
+            ["BundleProgram"] = "Contents/MacOS/helper",
+            ["AssociatedBundleIdentifiers"] = new List<object?> { "com.example.app" },
+        };
+        var item = StartupItems.FromDictionary(dict, "/Library/LaunchDaemons/com.example.helper.plist", "/Library/LaunchDaemons");
+        Assert.Equal("Contents/MacOS/helper (in com.example.app)", item.Command);
+
+        var empty = StartupItems.FromDictionary(new Dictionary<string, object?> { ["Label"] = "x" }, "/x.plist", "/Library/LaunchDaemons");
+        Assert.Equal("(no program in the plist)", empty.Command);
     }
 
     [Fact]
@@ -136,45 +157,62 @@ public class ParserTests
         Assert.Contains(ports, p => p is { Protocol: "UDP", Port: 5353, Address: "All interfaces" });
     }
 
-    [Fact]
-    public void Traceroute_hop_with_three_answers()
+    // An ICMP message quoting our TCP SYN: ICMP header (8 bytes), then the probe's IPv4 header
+    // (20 bytes, protocol 6) and the first bytes of its TCP header (source and destination port).
+    private static byte[] IcmpQuotingProbe(byte type, byte code, int sourcePort, int destPort, byte[] dest, bool withOuterIpHeader)
     {
-        var hop = TcpTraceroute.ParseHopLine(" 3  10.0.0.1  5.1 ms  10.0.0.1  6.2 ms  4.9 ms", "93.184.216.34");
-        Assert.NotNull(hop);
-        Assert.Equal(3, hop.Ttl);
-        Assert.Equal("10.0.0.1", hop.Address);
-        Assert.Equal([5L, 6L, 5L], [hop.Rtt1Ms!.Value, hop.Rtt2Ms!.Value, hop.Rtt3Ms!.Value]);
-        Assert.Null(hop.Note);
-    }
-
-    [Fact]
-    public void Traceroute_silent_hop_has_no_address()
-    {
-        var hop = TcpTraceroute.ParseHopLine(" 4  * * *", "93.184.216.34");
-        Assert.NotNull(hop);
-        Assert.Null(hop.Address);
-        Assert.Null(hop.Rtt1Ms);
-    }
-
-    [Fact]
-    public void Traceroute_reaching_the_target_is_marked()
-    {
-        var hop = TcpTraceroute.ParseHopLine(" 9  93.184.216.34  20.1 ms  19.8 ms  20.0 ms", "93.184.216.34");
-        Assert.Equal("Reached", hop!.Note);
-    }
-
-    [Fact]
-    public void Traceroute_unreachable_flag_becomes_a_note()
-    {
-        var hop = TcpTraceroute.ParseHopLine(" 6  172.16.0.1  3.0 ms !H  2.9 ms  3.1 ms", "93.184.216.34");
-        Assert.Equal("!H (host unreachable)", hop!.Note);
+        var icmp = new List<byte> { type, code, 0, 0, 0, 0, 0, 0 };
+        var inner = new byte[20];
+        inner[0] = 0x45;
+        inner[9] = 6;
+        dest.CopyTo(inner, 16);
+        icmp.AddRange(inner);
+        icmp.AddRange([(byte)(sourcePort >> 8), (byte)sourcePort, (byte)(destPort >> 8), (byte)destPort, 0, 0, 0, 0]);
+        if (!withOuterIpHeader)
+            return [.. icmp];
+        var outer = new byte[20];
+        outer[0] = 0x45;
+        outer[9] = 1; // ICMP
+        return [.. outer, .. icmp];
     }
 
     [Theory]
-    [InlineData("traceroute to example.com (93.184.216.34), 30 hops max")]
-    [InlineData("")]
-    public void Traceroute_other_lines_are_not_hops(string line) =>
-        Assert.Null(TcpTraceroute.ParseHopLine(line, "1.1.1.1"));
+    [InlineData(true)]
+    [InlineData(false)]
+    public void Icmp_time_exceeded_names_the_probe_it_quotes(bool withOuterIpHeader)
+    {
+        var packet = IcmpQuotingProbe(11, 0, 50123, 443, [93, 184, 216, 34], withOuterIpHeader);
+
+        Assert.True(TcpTraceroute.TryParseIcmpReply(packet, out var reply));
+        Assert.Equal(11, reply.Type);
+        Assert.Equal(50123, reply.SourcePort);
+        Assert.Equal(443, reply.DestPort);
+        Assert.Equal("93.184.216.34", reply.DestAddress.ToString());
+    }
+
+    [Fact]
+    public void Icmp_unreachable_keeps_its_code()
+    {
+        var packet = IcmpQuotingProbe(3, 13, 1000, 80, [10, 0, 0, 1], withOuterIpHeader: true);
+        Assert.True(TcpTraceroute.TryParseIcmpReply(packet, out var reply));
+        Assert.Equal((3, 13), (reply.Type, reply.Code));
+    }
+
+    [Fact]
+    public void Icmp_echo_replies_and_short_packets_are_ignored()
+    {
+        var echo = IcmpQuotingProbe(0, 0, 1, 2, [1, 1, 1, 1], withOuterIpHeader: true);
+        Assert.False(TcpTraceroute.TryParseIcmpReply(echo, out _));
+        Assert.False(TcpTraceroute.TryParseIcmpReply(new byte[12], out _));
+    }
+
+    [Fact]
+    public void Icmp_about_a_udp_probe_is_not_ours()
+    {
+        var packet = IcmpQuotingProbe(11, 0, 1, 2, [1, 1, 1, 1], withOuterIpHeader: false);
+        packet[8 + 9] = 17; // the quoted packet was UDP
+        Assert.False(TcpTraceroute.TryParseIcmpReply(packet, out _));
+    }
 
     [Fact]
     public void Launchd_plist_gives_label_command_and_flags()

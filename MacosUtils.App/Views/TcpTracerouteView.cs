@@ -4,7 +4,7 @@ using MacosUtils.Core.Net;
 
 namespace MacosUtils.App.Views;
 
-/// <summary>Traces the path to a host over TCP, one row per hop as traceroute reports it.</summary>
+/// <summary>Traces the path to a host over TCP, one row per hop as it answers.</summary>
 public sealed class TcpTracerouteView : UtilityView
 {
     private sealed record Row(int Ttl, string Address, string HostName, string Rtt1, string Rtt2, string Rtt3, string Note, bool NoAnswer);
@@ -18,7 +18,7 @@ public sealed class TcpTracerouteView : UtilityView
     private readonly Button _cancelButton = new() { Content = "Cancel", IsEnabled = false };
     private readonly ObservableCollection<Row> _rows = [];
     private readonly DataGrid _grid = CreateGrid();
-    private readonly TextBlock _status = StatusLine("Uses macOS's traceroute in TCP mode (-P tcp); no administrator password is needed.");
+    private readonly TextBlock _status = StatusLine("TCP connects with rising TTL; routers answer over ICMP. No administrator password is needed.");
     private CancellationTokenSource? _cts;
 
     public TcpTracerouteView()

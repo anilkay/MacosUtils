@@ -45,6 +45,16 @@ jobs:
             echo "::endgroup::"
           done
           exit $failed
+      # Without root the routers' replies arrive on the unprivileged ICMP socket; with sudo on a raw
+      # one. The two runs side by side show whether the unprivileged path names the same hops.
+      - name: TCP traceroute with and without root (diagnostic)
+        continue-on-error: true
+        run: |
+          cli=MacosUtils.Cli/bin/Release/net10.0/mutils.dll
+          echo "--- as $(whoami)"
+          dotnet $cli traceroute 1.1.1.1 443 8 --no-names --timeout 1500
+          echo "--- as root"
+          sudo "$(command -v dotnet)" $cli traceroute 1.1.1.1 443 8 --no-names --timeout 1500
       - name: Package the macOS app and open it
         run: |
           brew install librsvg

@@ -558,7 +558,7 @@ public static class PcTools
         }
     }
 
-    [Description("Traces the network path to a host over TCP, hop by hop with latency (macOS traceroute -P tcp).")]
+    [Description("Traces the network path to a host over TCP, hop by hop with latency (TCP SYN probes with rising TTL).")]
     public static async Task<string> TraceTcpRoute(
         [Description("Host name or IP address, e.g. example.com.")] string host,
         [Description("TCP port to probe (1-65535).")] int port = 80,

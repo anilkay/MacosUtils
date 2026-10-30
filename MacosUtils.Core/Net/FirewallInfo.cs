@@ -87,8 +87,17 @@ public static class FirewallInfo
         if (!OperatingSystem.IsMacOS())
             return [];
         // -F: one field per line (p=pid, c=command, P=protocol, n=address); -n/-P: no DNS or port names.
-        var output = Processes.TryRun(Lsof, ["-nP", "-iTCP", "-sTCP:LISTEN", "-iUDP", "-F", "pcPn"], TimeSpan.FromSeconds(20));
-        return output is null ? [] : ParseLsof(output);
+        // lsof exits with 1 when one of the -i selections matched nothing, even though it printed the
+        // others, so the output is read whatever the exit code.
+        try
+        {
+            var result = Processes.Run(Lsof, ["-nP", "-iTCP", "-sTCP:LISTEN", "-iUDP", "-F", "pcPn"], TimeSpan.FromSeconds(20));
+            return ParseLsof(result.Output);
+        }
+        catch (Exception ex) when (ex is TimeoutException or System.ComponentModel.Win32Exception or InvalidOperationException)
+        {
+            return [];
+        }
     }
 
     /// <summary>Parses "lsof -F pcPn" output; public for tests.</summary>

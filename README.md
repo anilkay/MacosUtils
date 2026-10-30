@@ -26,7 +26,7 @@ New releases are built by GitHub Actions whenever a `v*` tag is pushed (`.\relea
 | **System Information** | macOS version, Mac model, chip and core counts, memory, uptime, display, installed .NET / Java / Python / Node.js, security settings | Finds Homebrew, pyenv, uv, nvm, Volta, fnm, SDKMAN, python.org, Command Line Tools |
 | **Disk Info** | Mounted volumes with capacity and free space; under 10% free in red | Startup disk and `/Volumes`, local / external / network |
 | **Network Info** | Interfaces, addresses, MAC, and a ping | `en0`, VPN `utun`… |
-| **TCP Traceroute** | Path to a host over TCP, hop by hop | Uses `/usr/sbin/traceroute -P tcp`; **no administrator password** (WindowsUtils needs admin) |
+| **TCP Traceroute** | Path to a host over TCP, hop by hop | SYN probes with rising TTL; routers are read from ICMP on the unprivileged socket macOS gives ping, so **no administrator password** (WindowsUtils needs admin). The system `traceroute -P tcp` needs root (pcap), so it is not used |
 | **Firewall & Ports** | Application Firewall state and per-app rules, plus the TCP/UDP ports processes listen on | macOS's firewall works per app, not per port; ports come from `lsof` and are marked "Other machines" or "This Mac only" |
 | **File Hash Calculator** | MD5, SHA-1, SHA-256, SHA-512 and hash verification | Drop a file from Finder |
 | **Environment Variables** | This app's variables, or what a new Terminal window sees | An app opened from Finder only gets launchd's short environment; the login-shell view runs your shell once |

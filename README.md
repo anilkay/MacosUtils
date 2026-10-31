@@ -23,6 +23,7 @@ New releases are built by GitHub Actions whenever a `v*` tag is pushed (`.\relea
 | **Folder Size Analyzer** | Sizes of everything inside a folder, largest first | Double-click a folder to open it; *Show in Finder* |
 | **Largest Files** | Top 100 largest files in a folder or on all local volumes | *Move to Trash* (Finder's "Put Back" works), never deletes permanently |
 | **Duplicate Files** | Identical files (size → first 64 KB → SHA-256) | *Select Copies (Keep Oldest)*, then Trash |
+| **Developer Caches** | Sizes of Xcode DerivedData, Archives, DeviceSupport and simulators, Swift PM, CocoaPods, Homebrew downloads, npm, Yarn, Bun, pip, uv, NuGet, Gradle, Maven, Go and Cargo caches, each with what happens after clearing it | Selected folders go to the Trash after a confirmation (default *Cancel*); simulators are left to Xcode / `xcrun simctl`. Only listed folders in your home can be moved, never a symlink; privacy-protected folders are not touched, so no permission prompt 
 | **System Information** | macOS version, Mac model, chip and core counts, memory, uptime, display, installed .NET / Java / Python / Node.js, security settings | Finds Homebrew, pyenv, uv, nvm, Volta, fnm, SDKMAN, python.org, Command Line Tools |
 | **Disk Info** | Mounted volumes with capacity and free space; under 10% free in red | Startup disk and `/Volumes`, local / external / network |
 | **Network Info** | Interfaces, addresses, MAC, and a ping | `en0`, VPN `utun`… |

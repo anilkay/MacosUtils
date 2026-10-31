@@ -65,6 +65,7 @@ public static class PcTools
         new(CreateFunction(new Func<string>(GetStartupItems)), false),
         new(CreateFunction(new Func<int, CancellationToken, string>(GetHomebrewPackages)), false),
         new(CreateFunction(new Func<string>(GetBatteryHealth)), false),
+        new(CreateFunction(new Func<CancellationToken, string>(GetDeveloperCaches)), false),
         new(CreateFunction(new Func<string>(GetLocalUsers)), false),
         new(CreateFunction(new Func<string>(GetNetworkAdapters)), false),
         new(CreateFunction(new Func<string>(GetFirewallStatus)), false),
@@ -514,6 +515,35 @@ public static class PcTools
     /// <summary>The battery as label/value lines; shared with the app's Battery screen.</summary>
     public static IEnumerable<string> BatteryLines(BatteryStatus b) =>
         Battery.Describe(b).Select(p => $"{p.Label}: {p.Value}");
+
+    [Description("Lists developer caches that can be cleared to free disk space, with their sizes: Xcode DerivedData, Archives, "
+        + "DeviceSupport and simulators, Swift PM, CocoaPods, Homebrew downloads, npm, Yarn, Bun, pip, uv, NuGet, Gradle, Maven, "
+        + "Go and Cargo. Each comes with what happens after clearing it. Read-only: the user moves folders to the Trash in the app.")]
+    public static string GetDeveloperCaches(CancellationToken cancellationToken = default)
+    {
+        try
+        {
+            if (!OperatingSystem.IsMacOS())
+                return "Developer caches are only listed on macOS.";
+            var items = DeveloperCaches.Scan(cancellationToken: cancellationToken);
+            if (items.Count == 0)
+                return "(none of the known developer cache folders exist on this Mac)";
+            var lines = items.Select(i =>
+                $"{i.Location.Name} ({i.Location.Category}): {ByteFormatter.FormatBytes(i.SizeBytes)} at {i.Location.Path}. "
+                + (i.Location.CanTrash ? "" : "Clean with its tool, not the Trash: ") + i.Location.Note).ToList();
+            lines.Add($"Total: {ByteFormatter.FormatBytes(items.Where(i => i.Location.CanTrash).Sum(i => i.SizeBytes))} can go to the Trash "
+                + "(Developer Caches screen in the app); the space is freed when the Trash is emptied.");
+            return string.Join(Environment.NewLine, lines);
+        }
+        catch (OperationCanceledException)
+        {
+            throw;
+        }
+        catch (Exception ex)
+        {
+            return $"Error: {ex.Message}";
+        }
+    }
 
     [Description("Lists the local user accounts on this Mac: name, full name, UID, administrator or standard, home folder and shell. Read-only.")]
     public static string GetLocalUsers()

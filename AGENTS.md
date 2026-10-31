@@ -21,7 +21,7 @@ MacosUtils.Core/
 ├── Processes.cs           # runs system tools by FULL path (never PATH, never a shell), timeouts
 ├── Plist.cs               # XML plists parsed directly, binary ones via /usr/bin/plutil
 ├── Interop/ObjC.cs        # minimal Objective-C runtime P/Invoke (NSFileManager, NSURL)
-├── IO/                    # FileScanner, DuplicateFinder, Trash (NSFileManager), Finder (open -R), Volumes, ScanExclusions
+├── IO/                    # FileScanner, DuplicateFinder, DeveloperCaches, Trash (NSFileManager), Finder (open -R), Volumes, ScanExclusions
 ├── Net/                   # NetworkInfo (ping), TcpTraceroute (SYN probes + unprivileged ICMP socket), FirewallInfo (socketfilterfw + lsof)
 ├── Logging/               # daily rolling file logger
 └── SystemInfo/            # SystemDetails (sysctl/vm_stat/CoreGraphics), MacFeatures, StartupItems (launchd), LocalUsers (dscacheutil), Homebrew, Battery (ioreg),
@@ -51,6 +51,7 @@ MacosUtils.Tests/
 - **Detectors never start the runtime**; versions come from `release`, `patchlevel.h`, `node_version.h` or folder names.
 - **Homebrew is read, not run.** `Homebrew` lists `Cellar/<formula>/<version>` (with `INSTALL_RECEIPT.json` for "on request" and the date), `Caskroom/<cask>/<version>` (the cask JSON under `.metadata` names its apps for the size) and `var/homebrew/pinned`. Only `brew --version` runs, and only when `xcode-select -p` finds the Command Line Tools: it calls git, and `/usr/bin/git` without them opens the install dialog.
 - **Battery units differ by chip.** On Apple silicon `CurrentCapacity`/`MaxCapacity` in `AppleSmartBattery` are percentages and the mAh values are `AppleRaw*`; on Intel they are mAh. `ioreg -a` writes a negative `Amperage` as an unsigned 64-bit number, which `Plist` turns back into a negative one. Apple's "Maximum Capacity" and "Condition" come from `system_profiler`; the computed fallback uses `NominalChargeCapacity`. CI runners are VMs without a battery, so only the parser tests cover it.
+- **Developer Caches only trash what is on its list.** `DeveloperCaches.MoveToTrash` accepts a path only if it is exactly one of `Locations(home)`, marked `CanTrash`, and a real folder (not a link). The list stays out of `~/Library/Containers`, `MobileSync` and `~/.Trash`: reading them raises a TCC prompt or needs Full Disk Access. The AI tool only lists sizes.
 - **Firmlinks and automounts.** Scanning `/` would count `/System/Volumes/Data` twice, and `/net/<host>` mounts an NFS export from that host. `ScanExclusions` and `Volumes.IsNetworkPath` handle both; AI tool paths (the model chooses them) must go through `PcTools.ToLocalPath`, which also expands `~` and refuses network mounts.
 - **Privacy (TCC).** Protected folders return access denied, which the scanner's `IgnoreInaccessible` skips; Full Disk Access un-skips them. `Info.plist` carries the Documents/Desktop/Downloads/removable-volume purpose strings.
 - **`SpecialFolder.ApplicationData` is `~/.config` on macOS.** Use `AppPaths` for settings and logs.

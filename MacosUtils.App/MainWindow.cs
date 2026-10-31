@@ -19,6 +19,7 @@ public sealed class MainWindow : Window
         new("Folder Size Analyzer", "📁", "See what takes up space inside a folder.", () => new FolderSizeView()),
         new("Largest Files", "📄", "Find the biggest files on your volumes.", () => new LargestFilesView()),
         new("Duplicate Files", "🗂️", "Find identical files and free up space.", () => new DuplicateFilesView()),
+        new("Developer Caches", "🧹", "Xcode, Homebrew and package caches you can send to the Trash.", () => new DeveloperCachesView()),
         new("System Information", "💻", "macOS, chip, memory, installed runtimes and security settings.", () => new SystemInfoView()),
         new("Disk Info", "💽", "Capacity and free space for every volume.", () => new DiskInfoView()),
         new("Network Info", "🌐", "Network interfaces, addresses and a quick ping.", () => new NetworkInfoView()),

@@ -104,4 +104,28 @@ public class SecurityTests
     [Fact]
     public void Credentials_cannot_be_saved_without_a_host() =>
         Assert.Throws<ArgumentException>(() => CredentialStore.Save("secret", " "));
+
+    [Fact]
+    public void Developer_caches_are_distinct_folders_inside_the_home_folder()
+    {
+        var locations = DeveloperCaches.Locations("/Users/someone");
+        Assert.All(locations, l => Assert.StartsWith("/Users/someone/", l.Path.Replace('\\', '/')));
+        Assert.Equal(locations.Count, locations.Select(l => l.Path).Distinct().Count());
+        // Nothing on the list contains another entry, so one Trash move never takes a second item with it.
+        Assert.DoesNotContain(locations, a => locations.Any(b => a != b && b.Path.StartsWith(a.Path + Path.DirectorySeparatorChar, StringComparison.Ordinal)));
+    }
+
+    [Theory]
+    [InlineData("/etc")]
+    [InlineData("~/Library/Caches")]
+    public void Cleanup_refuses_to_trash_folders_that_are_not_on_the_list(string path) =>
+        Assert.Throws<InvalidOperationException>(() => DeveloperCaches.MoveToTrash(path));
+
+    [Fact]
+    public void Cleanup_refuses_to_trash_the_simulators()
+    {
+        var simulators = DeveloperCaches.Locations(AppPaths.Home).Single(l => l.Name == "Simulator devices");
+        Assert.False(simulators.CanTrash);
+        Assert.Throws<InvalidOperationException>(() => DeveloperCaches.MoveToTrash(simulators.Path));
+    }
 }

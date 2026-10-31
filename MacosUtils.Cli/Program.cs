@@ -114,6 +114,9 @@ static class Program
                 return error is not null ? Fail(error) : Ok(PcTools.GetHomebrewPackages(n, ct));
             }),
 
+        new("caches", ["cleanup"], "caches", "Developer caches that can be cleared, with sizes (read-only).",
+            (_, ct) => Ok(PcTools.GetDeveloperCaches(ct))),
+
         new("battery", [], "battery", "Battery health, charge and cycle count.",
             (_, _) => Ok(PcTools.GetBatteryHealth())),
 

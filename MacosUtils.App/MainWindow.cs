@@ -27,6 +27,7 @@ public sealed class MainWindow : Window
         new("File Hash Calculator", "#️⃣", "Compute and verify MD5, SHA-1, SHA-256 and SHA-512 hashes.", () => new FileHashView()),
         new("Environment Variables", "🔧", "This app's variables and what a Terminal window sees.", () => new EnvironmentVariablesView()),
         new("Startup Items", "🚀", "Launch agents and daemons that start with the Mac.", () => new StartupItemsView()),
+        new("Homebrew", "🍺", "Is Homebrew installed, and what it installed: formulae, casks and their sizes.", () => new HomebrewView()),
         new("Local Users", "👥", "Local user accounts, administrators and their shells.", () => new LocalUsersView()),
         new("AI Chat", "💬", "Ask an AI assistant that can inspect this Mac.", () => new ChatView()),
     ];

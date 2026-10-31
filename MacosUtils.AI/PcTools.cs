@@ -63,6 +63,7 @@ public static class PcTools
         new(CreateFunction(new Func<string, int, int, CancellationToken, string>(FindDuplicateFiles)), false),
         new(CreateFunction(new Func<string, int, CancellationToken, string>(GetFolderSizes)), false),
         new(CreateFunction(new Func<string>(GetStartupItems)), false),
+        new(CreateFunction(new Func<int, CancellationToken, string>(GetHomebrewPackages)), false),
         new(CreateFunction(new Func<string>(GetLocalUsers)), false),
         new(CreateFunction(new Func<string>(GetNetworkAdapters)), false),
         new(CreateFunction(new Func<string>(GetFirewallStatus)), false),
@@ -434,6 +435,54 @@ public static class PcTools
                     .Where(f => f is not null));
                 return $"{e.Label} [{e.Location}{(flags.Length > 0 ? "; " + flags : "")}]: {command}";
             }));
+        }
+        catch (Exception ex)
+        {
+            return $"Error: {ex.Message}";
+        }
+    }
+
+    [Description("Says whether Homebrew is installed (/opt/homebrew on Apple silicon, /usr/local on Intel) and lists the installed "
+        + "formulae and casks: version, whether the user asked for it or it came in as a dependency, pinned, install date and size "
+        + "on disk, plus the size of the download cache. Reads Homebrew's folders; brew itself is not run (except brew --version). Read-only.")]
+    public static string GetHomebrewPackages(int maxCount = 200, CancellationToken cancellationToken = default)
+    {
+        try
+        {
+            var installations = Homebrew.GetInstallations(cancellationToken);
+            if (installations.Count == 0)
+                return "Homebrew is not installed (no brew in /opt/homebrew/bin or /usr/local/bin). Install it from https://brew.sh.";
+
+            var lines = installations.Select(i =>
+                $"Homebrew {(i.Version.Length > 0 ? i.Version : "(version unknown)")} at {i.Prefix} ({i.Architecture}"
+                + $"{(i.UnderRosetta ? ", runs under Rosetta 2" : "")}): {i.Formulae} formulae, {i.Casks} casks").ToList();
+            lines.Add($"Download cache: {ByteFormatter.FormatBytes(installations[0].CacheBytes)} in {Homebrew.CacheFolder} (brew cleanup removes old downloads)");
+
+            var packages = Homebrew.GetPackages(includeSizes: true, cancellationToken);
+            maxCount = Math.Clamp(maxCount, 1, 1000);
+            lines.Add("");
+            lines.AddRange(packages.Take(maxCount).Select(p =>
+            {
+                var details = new List<string> { p.Kind == HomebrewKind.Cask ? "cask" : "formula" };
+                if (p.InstalledOnRequest is { } onRequest)
+                    details.Add(onRequest ? "installed on request" : "dependency");
+                if (p.Pinned)
+                    details.Add("pinned");
+                if (p.InstalledAt is { } at)
+                    details.Add($"installed {at:yyyy-MM-dd}");
+                details.Add(ByteFormatter.FormatBytes(p.SizeBytes));
+                if (installations.Count > 1)
+                    details.Add(p.Prefix);
+                var older = p.Versions.Count > 1 ? $" (also {string.Join(", ", p.Versions.SkipLast(1))})" : "";
+                return $"{p.Name} {p.Version}{older} [{string.Join(", ", details)}]";
+            }));
+            if (packages.Count > maxCount)
+                lines.Add($"... and {packages.Count - maxCount} more");
+            return string.Join(Environment.NewLine, lines);
+        }
+        catch (OperationCanceledException)
+        {
+            throw;
         }
         catch (Exception ex)
         {

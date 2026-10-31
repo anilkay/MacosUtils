@@ -319,4 +319,58 @@ public class ParserTests
         var sorted = versions.OrderByDescending(RuntimeProbe.SortKey).ToArray();
         Assert.Equal(["21.0.4", "17.0.11", "11.0.23", "1.8.0_402"], sorted);
     }
+
+    [Fact]
+    public void Brew_version_is_read_from_the_first_line()
+    {
+        Assert.Equal("4.6.3", Homebrew.ParseVersion("Homebrew 4.6.3\nHomebrew/homebrew-core (git revision 1a2b; last commit 2026-10-01)\n"));
+        Assert.Equal("4.6.3-12-gabcdef0", Homebrew.ParseVersion("Homebrew 4.6.3-12-gabcdef0"));
+        Assert.Equal("", Homebrew.ParseVersion("brew: command not found"));
+    }
+
+    [Fact]
+    public void Install_receipt_says_whether_a_formula_was_asked_for()
+    {
+        const string receipt = """
+            {"homebrew_version":"4.6.3","used_options":[],"unused_options":[],"built_as_bottle":true,"poured_from_bottle":true,
+             "loaded_from_api":true,"installed_as_dependency":false,"installed_on_request":true,"changed_files":[],
+             "time":1760000000,"source_modified_time":1759000000,"compiler":"clang","runtime_dependencies":[]}
+            """;
+        var (onRequest, installedAt) = Homebrew.ParseReceipt(receipt);
+        Assert.True(onRequest);
+        Assert.Equal(DateTimeOffset.FromUnixTimeSeconds(1760000000).LocalDateTime, installedAt);
+
+        var dependency = Homebrew.ParseReceipt("""{"installed_on_request":false,"installed_as_dependency":true}""");
+        Assert.False(dependency.OnRequest);
+        Assert.Null(dependency.InstalledAt);
+
+        Assert.Equal((null, null), Homebrew.ParseReceipt("not json"));
+        Assert.Equal((null, null), Homebrew.ParseReceipt("""{"installed_on_request":"yes","time":"later"}"""));
+    }
+
+    [Fact]
+    public void Cask_definition_names_its_app_bundles()
+    {
+        const string cask = """
+            {"token":"visual-studio-code","version":"1.105.1","artifacts":[
+              {"uninstall":[{"quit":"com.microsoft.VSCode"}]},
+              {"app":["Visual Studio Code.app"]},
+              {"binary":["$APPDIR/Visual Studio Code.app/Contents/Resources/app/bin/code"]},
+              {"app":["Foo Installer.app",{"target":"Foo.app"}]},
+              {"app":["Evil.app",{"target":"../../etc/x.app"}]},
+              {"zap":[{"trash":["~/Library/Application Support/Code"]}]}
+            ]}
+            """;
+        Assert.Equal(["Visual Studio Code.app", "Foo.app"], Homebrew.ParseCaskApps(cask));
+        Assert.Empty(Homebrew.ParseCaskApps("""{"token":"font-x","artifacts":[{"font":["X.ttf"]}]}"""));
+        Assert.Empty(Homebrew.ParseCaskApps("{"));
+    }
+
+    [Fact]
+    public void Keg_versions_sort_by_their_numbers()
+    {
+        var versions = new List<string> { "1.10.0", "1.9.2", "2.0_1", "2.0", "1.9.2_1" };
+        versions.Sort(Homebrew.CompareVersions);
+        Assert.Equal(["1.9.2", "1.9.2_1", "1.10.0", "2.0", "2.0_1"], versions);
+    }
 }

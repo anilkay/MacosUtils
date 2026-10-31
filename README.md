@@ -31,6 +31,7 @@ New releases are built by GitHub Actions whenever a `v*` tag is pushed (`.\relea
 | **File Hash Calculator** | MD5, SHA-1, SHA-256, SHA-512 and hash verification | Drop a file from Finder |
 | **Environment Variables** | This app's variables, or what a new Terminal window sees | An app opened from Finder only gets launchd's short environment; the login-shell view runs your shell once |
 | **Startup Items** | LaunchAgents and LaunchDaemons that start with the Mac | Replaces the Windows registry Run keys; *Show plist in Finder* |
+| **Homebrew** | Whether Homebrew is installed, its version, and every formula and cask with version, install date, size and whether you asked for it or it came as a dependency | Reads `Cellar` and `Caskroom` in `/opt/homebrew` and `/usr/local` (an Intel Homebrew on Apple silicon is flagged as Rosetta); brew itself is not run, so nothing auto-updates. Shows the download cache that `brew cleanup` frees |
 | **Local Users** | Local accounts (UID ≥ 500), administrators, home and shell | From Directory Services; manage users in System Settings |
 | **AI Chat** | Chat with an AI agent that can inspect this Mac through the read-only tools | API key in the **Keychain**; local MCP server |
 

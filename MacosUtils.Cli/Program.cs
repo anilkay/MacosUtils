@@ -107,6 +107,13 @@ static class Program
         new("startup", ["launchagents"], "startup", "Launch agents and daemons that start with the Mac.",
             (_, _) => Ok(PcTools.GetStartupItems())),
 
+        new("brew", ["homebrew"], "brew [n]", "Is Homebrew installed, and its formulae and casks.",
+            (a, ct) =>
+            {
+                var n = OptionalInt(a, 0, "count", 200, out var error);
+                return error is not null ? Fail(error) : Ok(PcTools.GetHomebrewPackages(n, ct));
+            }),
+
         new("users", [], "users", "Local user accounts and their status.",
             (_, _) => Ok(PcTools.GetLocalUsers())),
 

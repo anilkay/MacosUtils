@@ -24,7 +24,7 @@ MacosUtils.Core/
 ├── IO/                    # FileScanner, DuplicateFinder, Trash (NSFileManager), Finder (open -R), Volumes, ScanExclusions
 ├── Net/                   # NetworkInfo (ping), TcpTraceroute (SYN probes + unprivileged ICMP socket), FirewallInfo (socketfilterfw + lsof)
 ├── Logging/               # daily rolling file logger
-└── SystemInfo/            # SystemDetails (sysctl/vm_stat/CoreGraphics), MacFeatures, StartupItems (launchd), LocalUsers (dscacheutil),
+└── SystemInfo/            # SystemDetails (sysctl/vm_stat/CoreGraphics), MacFeatures, StartupItems (launchd), LocalUsers (dscacheutil), Homebrew,
                            # EnvironmentInfo, RuntimeInstallation + RuntimeDetectors (Java/Python/Node/.NET)
 MacosUtils.AI/             # ChatSession, PcTools (the single tool list), McpServerHost, CredentialStore (Keychain), ChatSettingsStore
 MacosUtils.Cli/            # "mutils": command table over PcTools
@@ -49,6 +49,7 @@ MacosUtils.Tests/
 - **Tools by full path, parsed in English.** An app opened from Finder has only `/usr/bin:/bin:/usr/sbin:/sbin`. `Processes` requires a fully qualified path and sets `LC_ALL`/`LANG` to `en_US.UTF-8`. Every parser is a public method taking text, with a test on a captured sample (`ParserTests`): add the sample first when output formats change.
 - **Homebrew is not on PATH in an app.** Runtime detectors also look in `/opt/homebrew` and `/usr/local` (`RuntimeProbe.FindExecutables`). `/usr/bin/java` and `/usr/bin/python3` are Apple stubs that can open an install dialog: never run them and skip `/usr/bin` when searching PATH.
 - **Detectors never start the runtime**; versions come from `release`, `patchlevel.h`, `node_version.h` or folder names.
+- **Homebrew is read, not run.** `Homebrew` lists `Cellar/<formula>/<version>` (with `INSTALL_RECEIPT.json` for "on request" and the date), `Caskroom/<cask>/<version>` (the cask JSON under `.metadata` names its apps for the size) and `var/homebrew/pinned`. Only `brew --version` runs, and only when `xcode-select -p` finds the Command Line Tools: it calls git, and `/usr/bin/git` without them opens the install dialog.
 - **Firmlinks and automounts.** Scanning `/` would count `/System/Volumes/Data` twice, and `/net/<host>` mounts an NFS export from that host. `ScanExclusions` and `Volumes.IsNetworkPath` handle both; AI tool paths (the model chooses them) must go through `PcTools.ToLocalPath`, which also expands `~` and refuses network mounts.
 - **Privacy (TCC).** Protected folders return access denied, which the scanner's `IgnoreInaccessible` skips; Full Disk Access un-skips them. `Info.plist` carries the Documents/Desktop/Downloads/removable-volume purpose strings.
 - **`SpecialFolder.ApplicationData` is `~/.config` on macOS.** Use `AppPaths` for settings and logs.

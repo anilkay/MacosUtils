@@ -373,4 +373,130 @@ public class ParserTests
         versions.Sort(Homebrew.CompareVersions);
         Assert.Equal(["1.9.2", "1.9.2_1", "1.10.0", "2.0", "2.0_1"], versions);
     }
+
+    // "ioreg -r -c AppleSmartBattery -a" on an Apple silicon MacBook (trimmed): percentages in
+    // CurrentCapacity/MaxCapacity, mAh in the AppleRaw* keys, a discharge current written unsigned.
+    private const string AppleSiliconBattery = """
+        <?xml version="1.0" encoding="UTF-8"?>
+        <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+        <plist version="1.0">
+        <array>
+          <dict>
+            <key>AppleRawCurrentCapacity</key><integer>3605</integer>
+            <key>AppleRawMaxCapacity</key><integer>4210</integer>
+            <key>NominalChargeCapacity</key><integer>4325</integer>
+            <key>DesignCapacity</key><integer>4563</integer>
+            <key>CurrentCapacity</key><integer>86</integer>
+            <key>MaxCapacity</key><integer>100</integer>
+            <key>CycleCount</key><integer>214</integer>
+            <key>BatteryData</key><dict><key>DesignCycleCount70</key><integer>1000</integer></dict>
+            <key>BatteryInstalled</key><true/>
+            <key>ExternalConnected</key><false/>
+            <key>IsCharging</key><false/>
+            <key>FullyCharged</key><false/>
+            <key>Temperature</key><integer>3061</integer>
+            <key>Voltage</key><integer>12450</integer>
+            <key>Amperage</key><integer>18446744073709550616</integer>
+            <key>AvgTimeToEmpty</key><integer>412</integer>
+            <key>TimeRemaining</key><integer>400</integer>
+            <key>AvgTimeToFull</key><integer>65535</integer>
+            <key>DeviceName</key><string>bq40z651</string>
+            <key>PermanentFailureStatus</key><integer>0</integer>
+          </dict>
+        </array>
+        </plist>
+        """;
+
+    [Fact]
+    public void Apple_silicon_battery_reads_percent_charge_and_raw_capacities()
+    {
+        var entry = Assert.IsType<List<object?>>(Plist.Parse(AppleSiliconBattery)).OfType<Dictionary<string, object?>>().Single();
+        var battery = Battery.FromRegistry(entry)!;
+
+        Assert.Equal(86, battery.ChargePercent);
+        Assert.Equal(214, battery.CycleCount);
+        Assert.Equal(1000, battery.DesignCycleCount);
+        Assert.Equal(4210, battery.FullChargeMah);
+        Assert.Equal(3605, battery.CurrentChargeMah);
+        Assert.Equal(4563, battery.DesignCapacityMah);
+        Assert.Equal(94.8, battery.HealthPercent);      // nominal 4325 / design 4563
+        Assert.Equal(30.61, battery.TemperatureCelsius);
+        Assert.Equal(-1000, battery.AmperageMa);
+        Assert.Equal(-12.45, battery.PowerWatts!.Value, 2);
+        Assert.Equal(TimeSpan.FromMinutes(412), battery.TimeRemaining);
+        Assert.Equal("On battery", battery.State);
+        Assert.Contains(("Cycle Count", "214 of 1000 rated cycles", false), Battery.Describe(battery));
+        Assert.Contains(("Temperature", "30.6 °C", false), Battery.Describe(battery));
+        Assert.Equal("", battery.Adapter);
+        Assert.False(battery.NeedsAttention);
+    }
+
+    [Fact]
+    public void Apples_condition_and_maximum_capacity_win_over_the_computed_health()
+    {
+        const string profiler = """
+            Power:
+
+                Battery Information:
+
+                  Model Information:
+                      Device Name: bq40z651
+                  Charge Information:
+                      Fully Charged: No
+                      Charging: No
+                      State of Charge (%): 86
+                  Health Information:
+                      Cycle Count: 214
+                      Condition: Service Recommended
+                      Maximum Capacity: 79%
+            """;
+        Assert.Equal(("Service Recommended", 79.0, 214), Battery.ParseSystemProfiler(profiler));
+
+        var entry = Assert.IsType<List<object?>>(Plist.Parse(AppleSiliconBattery)).OfType<Dictionary<string, object?>>().Single();
+        var battery = Battery.FromRegistry(entry, profiler)!;
+        Assert.Equal(79.0, battery.HealthPercent);
+        Assert.Equal("Service Recommended", battery.Condition);
+        Assert.True(battery.NeedsAttention);
+    }
+
+    [Fact]
+    public void Intel_battery_reads_mah_capacities_and_the_adapter()
+    {
+        var entry = new Dictionary<string, object?>
+        {
+            ["BatteryInstalled"] = true,
+            ["CurrentCapacity"] = 3000L,
+            ["MaxCapacity"] = 4000L,
+            ["DesignCapacity"] = 5000L,
+            ["CycleCount"] = 640L,
+            ["DesignCycleCount9C"] = 1000L,
+            ["ExternalConnected"] = true,
+            ["IsCharging"] = true,
+            ["AvgTimeToFull"] = 75L,
+            ["AdapterDetails"] = new Dictionary<string, object?> { ["Watts"] = 87L, ["Name"] = "87W USB-C Power Adapter" },
+        };
+        var battery = Battery.FromRegistry(entry)!;
+
+        Assert.Equal(75, battery.ChargePercent);
+        Assert.Equal(4000, battery.FullChargeMah);
+        Assert.Equal(3000, battery.CurrentChargeMah);
+        Assert.Equal(80.0, battery.HealthPercent);
+        Assert.Equal(1000, battery.DesignCycleCount);
+        Assert.Equal(TimeSpan.FromMinutes(75), battery.TimeRemaining);
+        Assert.Equal("Charging", battery.State);
+        Assert.Equal("87W USB-C Power Adapter", battery.Adapter);
+
+        entry["AdapterDetails"] = new Dictionary<string, object?> { ["Watts"] = 60L };
+        entry["IsCharging"] = false;
+        battery = Battery.FromRegistry(entry)!;
+        Assert.Equal("60 W adapter", battery.Adapter);
+        Assert.Equal("On power adapter, not charging", battery.State);
+        Assert.Null(battery.TimeRemaining);
+    }
+
+    [Fact]
+    public void A_mac_without_a_battery_has_no_status()
+    {
+        Assert.Null(Battery.FromRegistry(new Dictionary<string, object?> { ["BatteryInstalled"] = false }));
+    }
 }

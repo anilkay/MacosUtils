@@ -64,6 +64,7 @@ public static class PcTools
         new(CreateFunction(new Func<string, int, CancellationToken, string>(GetFolderSizes)), false),
         new(CreateFunction(new Func<string>(GetStartupItems)), false),
         new(CreateFunction(new Func<int, CancellationToken, string>(GetHomebrewPackages)), false),
+        new(CreateFunction(new Func<string>(GetBatteryHealth)), false),
         new(CreateFunction(new Func<string>(GetLocalUsers)), false),
         new(CreateFunction(new Func<string>(GetNetworkAdapters)), false),
         new(CreateFunction(new Func<string>(GetFirewallStatus)), false),
@@ -489,6 +490,30 @@ public static class PcTools
             return $"Error: {ex.Message}";
         }
     }
+
+    [Description("Gets the MacBook battery's health and state: charge, charging or not, Apple's condition (Normal / Service "
+        + "Recommended), maximum capacity against the design capacity, cycle count and rated cycles, temperature, power draw, "
+        + "time remaining and the connected power adapter. Says so when the Mac has no battery. Read-only.")]
+    public static string GetBatteryHealth()
+    {
+        try
+        {
+            var b = Battery.Get();
+            if (b is null)
+                return OperatingSystem.IsMacOS()
+                    ? "This Mac has no battery (a desktop Mac or a virtual machine)."
+                    : "Battery information is only available on macOS.";
+            return string.Join(Environment.NewLine, BatteryLines(b));
+        }
+        catch (Exception ex)
+        {
+            return $"Error: {ex.Message}";
+        }
+    }
+
+    /// <summary>The battery as label/value lines; shared with the app's Battery screen.</summary>
+    public static IEnumerable<string> BatteryLines(BatteryStatus b) =>
+        Battery.Describe(b).Select(p => $"{p.Label}: {p.Value}");
 
     [Description("Lists the local user accounts on this Mac: name, full name, UID, administrator or standard, home folder and shell. Read-only.")]
     public static string GetLocalUsers()

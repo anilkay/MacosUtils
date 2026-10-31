@@ -111,7 +111,10 @@ public static class Plist
             case "string":
                 return element.Value;
             case "integer":
-                return long.TryParse(element.Value, NumberStyles.Integer, CultureInfo.InvariantCulture, out var number) ? number : 0L;
+                if (long.TryParse(element.Value, NumberStyles.Integer, CultureInfo.InvariantCulture, out var number))
+                    return number;
+                // ioreg writes negative 64-bit registry numbers (a battery's discharge current) as unsigned.
+                return ulong.TryParse(element.Value.Trim(), NumberStyles.None, CultureInfo.InvariantCulture, out var unsigned) ? unchecked((long)unsigned) : 0L;
             case "real":
                 return double.TryParse(element.Value, NumberStyles.Float, CultureInfo.InvariantCulture, out var real) ? real : 0.0;
             case "true":

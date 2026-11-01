@@ -35,7 +35,7 @@ jobs:
         run: |
           dotnet build MacosUtils.Cli --configuration Release
           failed=0
-          for command in "time" "system" "dotnet" "java" "python" "node" "features" "processes 5" "disks" "network" \
+          for command in "time" "system" "dotnet" "java" "python" "node" "go" "rust" "ruby" "php" "xcode" "features" "processes 5" "disks" "network" \
                          "firewall" "ports" "startup" "brew 15" "battery" "caches" "users" "envlist LoginShell 5" "largest $HOME 3" "foldersize $HOME 3" \
                          "hash /etc/hosts SHA-256"; do
             echo "::group::mutils $command"

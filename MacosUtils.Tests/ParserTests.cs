@@ -499,4 +499,82 @@ public class ParserTests
     {
         Assert.Null(Battery.FromRegistry(new Dictionary<string, object?> { ["BatteryInstalled"] = false }));
     }
+
+    [Theory]
+    [InlineData("go1.23.2\ntime 2024-10-01T16:39:51Z\n", "1.23.2")]
+    [InlineData("go1.24rc1", "1.24rc1")]
+    [InlineData("devel go1.25-abcdef Tue Oct 1 2026", "devel go1.25-abcdef Tue Oct 1 2026")]
+    [InlineData("", null)]
+    public void Go_version_comes_from_the_goroot_version_file(string text, string? expected) =>
+        Assert.Equal(expected, GoDetector.ParseVersionFile(text));
+
+    [Fact]
+    public void Rust_version_comes_from_the_rust_package_of_the_channel_manifest()
+    {
+        string[] manifest =
+        [
+            "date = \"2024-10-17\"",
+            "manifest-version = \"2\"",
+            "[pkg.cargo]",
+            "version = \"0.83.0 (5ffbef321 2024-10-29)\"",
+            "[pkg.cargo.target.aarch64-apple-darwin]",
+            "available = true",
+            "[pkg.rust]",
+            "version = \"1.82.0 (f6e511eec 2024-10-15)\"",
+            "[pkg.rust.target.aarch64-apple-darwin]",
+        ];
+        Assert.Equal("1.82.0", RustDetector.ParseChannelManifest(manifest));
+        Assert.Null(RustDetector.ParseChannelManifest(["[pkg.cargo]", "version = \"0.83.0\""]));
+    }
+
+    [Theory]
+    [InlineData("/Users/x/.rbenv/versions/3.3.5", "3.3.5")]
+    [InlineData("/Users/x/.rubies/ruby-3.2.4", "3.2.4")]
+    [InlineData("/Applications/MAMP/bin/php/php8.2.0", "8.2.0")]
+    [InlineData("/Users/x/sdk/go1.22.8", "1.22.8")]
+    [InlineData("/Users/x/.rustup/toolchains/1.80.1-aarch64-apple-darwin", "1.80.1")]
+    [InlineData("/Users/x/.rustup/toolchains/stable-aarch64-apple-darwin", null)]
+    public void Versions_are_read_from_version_manager_folder_names(string home, string? expected) =>
+        Assert.Equal(expected, ToolProbe.FolderVersion(home));
+
+    [Fact]
+    public void Ruby_and_php_versions_come_from_their_installed_headers()
+    {
+        var home = Directory.CreateTempSubdirectory("macosutils-ruby-").FullName;
+        try
+        {
+            var arch = Path.Combine(home, "lib", "ruby", "3.3.0", "arm64-darwin24");
+            Directory.CreateDirectory(arch);
+            File.WriteAllLines(Path.Combine(arch, "rbconfig.rb"),
+            [
+                "module RbConfig",
+                "  RUBY_VERSION.start_with?(\"3.3.\") or",
+                "  CONFIG[\"MAJOR\"] = \"3\"",
+                "  CONFIG[\"RUBY_PROGRAM_VERSION\"] = \"3.3.5\"",
+            ]);
+            Assert.Equal("3.3.5", RubyDetector.RbConfigVersion(home));
+
+            var header = Path.Combine(home, "php_version.h");
+            File.WriteAllLines(header, ["#define PHP_MAJOR_VERSION 8", "#define PHP_VERSION \"8.3.12\"", "#define PHP_VERSION_ID 80312"]);
+            Assert.Equal("8.3.12", ToolProbe.QuotedValue(header, "#define PHP_VERSION "));
+        }
+        finally
+        {
+            Directory.Delete(home, recursive: true);
+        }
+    }
+
+    [Theory]
+    [InlineData("16.0.0.0.1.1724870825", "16.0")]
+    [InlineData("14.3.1.0.1.1683849156", "14.3.1")]
+    [InlineData("26.1", "26.1")]
+    public void Command_line_tools_version_drops_the_build_parts(string package, string expected) =>
+        Assert.Equal(expected, XcodeDetector.CommandLineToolsVersion(package));
+
+    [Fact]
+    public void Xcode_version_and_build_come_from_version_plist()
+    {
+        var plist = new Dictionary<string, object?> { ["CFBundleShortVersionString"] = "26.1", ["ProductBuildVersion"] = "17B55" };
+        Assert.Equal(("26.1", "17B55"), XcodeDetector.FromVersionPlist(plist));
+    }
 }

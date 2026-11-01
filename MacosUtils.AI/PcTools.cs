@@ -54,6 +54,11 @@ public static class PcTools
         new(CreateFunction(new Func<string>(GetJavaVersion)), false),
         new(CreateFunction(new Func<string>(GetPythonVersion)), false),
         new(CreateFunction(new Func<string>(GetNodeVersion)), false),
+        new(CreateFunction(new Func<string>(GetGoVersion)), false),
+        new(CreateFunction(new Func<string>(GetRustVersion)), false),
+        new(CreateFunction(new Func<string>(GetRubyVersion)), false),
+        new(CreateFunction(new Func<string>(GetPhpVersion)), false),
+        new(CreateFunction(new Func<string>(GetXcodeVersion)), false),
         new(CreateFunction(new Func<string>(GetMacFeatures)), false),
         new(CreateFunction(new Func<int, string>(GetProcesses)), false),
         new(CreateFunction(new Func<string>(GetVolumes)), false),
@@ -178,6 +183,31 @@ public static class PcTools
         + "(PATH, Homebrew, nvm, Volta or fnm). The first one listed is what a terminal runs. Read-only.")]
     public static string GetNodeVersion() =>
         DescribeRuntimes(NodeDetector.Find, "Node.js", "PATH, Homebrew, nvm, Volta or fnm");
+
+    [Description("Gets the installed Go version(s): version, GOROOT and where it was found (PATH, GOROOT, Homebrew, the go.dev "
+        + "installer, ~/sdk, toolchains Go downloaded itself, goenv, asdf or mise). The first one listed is what a terminal runs. Read-only.")]
+    public static string GetGoVersion() =>
+        DescribeRuntimes(GoDetector.Find, "Go", "PATH, GOROOT, Homebrew, /usr/local/go, ~/sdk, GOTOOLCHAIN downloads, goenv, asdf or mise");
+
+    [Description("Gets the installed Rust toolchain(s): rustc version, channel (stable/beta/nightly), folder and where it was found "
+        + "(rustup with its default first, Homebrew, PATH, asdf or mise). Read-only.")]
+    public static string GetRustVersion() =>
+        DescribeRuntimes(RustDetector.Find, "Rust", "rustup, Homebrew, PATH, asdf or mise");
+
+    [Description("Gets the installed Ruby version(s): version, folder and where it was found (PATH, Homebrew, rbenv, rvm, chruby, "
+        + "asdf, mise, or the deprecated Ruby that ships with macOS). The first one listed is what a terminal runs. Read-only.")]
+    public static string GetRubyVersion() =>
+        DescribeRuntimes(RubyDetector.Find, "Ruby", "PATH, Homebrew, rbenv, rvm, chruby, asdf, mise or macOS");
+
+    [Description("Gets the installed PHP version(s): version, folder and where it was found (PATH, Homebrew, MAMP, asdf or mise). "
+        + "The first one listed is what a terminal runs. Read-only.")]
+    public static string GetPhpVersion() =>
+        DescribeRuntimes(PhpDetector.Find, "PHP", "PATH, Homebrew, MAMP, asdf or mise");
+
+    [Description("Gets the installed Xcode copies (version and build, in /Applications or ~/Applications) and the Command Line Tools "
+        + "version. The one xcode-select points at (used by git, clang, swift in Terminal) is listed first. Read-only.")]
+    public static string GetXcodeVersion() =>
+        DescribeRuntimes(XcodeDetector.Find, "Xcode", "/Applications, ~/Applications and /Library/Developer/CommandLineTools");
 
     private static string DescribeRuntimes(Func<IReadOnlyList<RuntimeInstallation>> find, string name, string searched)
     {

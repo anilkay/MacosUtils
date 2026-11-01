@@ -38,6 +38,11 @@ public sealed class SystemInfoView : UtilityView
             AddRuntimeRows(list, "Java", JavaDetector.Find());
             AddRuntimeRows(list, "Python", PythonDetector.Find());
             AddRuntimeRows(list, "Node.js", NodeDetector.Find());
+            AddRuntimeRows(list, "Go", GoDetector.Find());
+            AddRuntimeRows(list, "Rust", RustDetector.Find());
+            AddRuntimeRows(list, "Ruby", RubyDetector.Find());
+            AddRuntimeRows(list, "PHP", PhpDetector.Find());
+            AddRuntimeRows(list, "Xcode", XcodeDetector.Find());
             foreach (var feature in MacFeatures.Get())
                 list.Add(new Row(feature.Name, feature.Display, feature.State != FeatureState.Enabled));
             return list;

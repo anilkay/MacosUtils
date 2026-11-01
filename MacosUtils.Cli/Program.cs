@@ -35,6 +35,21 @@ static class Program
         new("node", [], "node", "Installed Node.js.",
             (_, _) => Ok(PcTools.GetNodeVersion())),
 
+        new("go", ["golang"], "go", "Installed Go.",
+            (_, _) => Ok(PcTools.GetGoVersion())),
+
+        new("rust", ["rustc"], "rust", "Installed Rust toolchains.",
+            (_, _) => Ok(PcTools.GetRustVersion())),
+
+        new("ruby", [], "ruby", "Installed Ruby.",
+            (_, _) => Ok(PcTools.GetRubyVersion())),
+
+        new("php", [], "php", "Installed PHP.",
+            (_, _) => Ok(PcTools.GetPhpVersion())),
+
+        new("xcode", [], "xcode", "Installed Xcode and Command Line Tools.",
+            (_, _) => Ok(PcTools.GetXcodeVersion())),
+
         new("features", ["security"], "features", "Security and sharing settings (SIP, FileVault, SSH...).",
             (_, _) => Ok(PcTools.GetMacFeatures())),
 

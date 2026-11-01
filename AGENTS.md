@@ -25,7 +25,7 @@ MacosUtils.Core/
 ├── Net/                   # NetworkInfo (ping), TcpTraceroute (SYN probes + unprivileged ICMP socket), FirewallInfo (socketfilterfw + lsof)
 ├── Logging/               # daily rolling file logger
 └── SystemInfo/            # SystemDetails (sysctl/vm_stat/CoreGraphics), MacFeatures, StartupItems (launchd), LocalUsers (dscacheutil), Homebrew, Battery (ioreg),
-                           # EnvironmentInfo, RuntimeInstallation + RuntimeDetectors (Java/Python/Node/.NET)
+                           # EnvironmentInfo, RuntimeInstallation + RuntimeDetectors (Java/Python/Node/.NET) + DeveloperToolDetectors (Go/Rust/Ruby/PHP/Xcode)
 MacosUtils.AI/             # ChatSession, PcTools (the single tool list), McpServerHost, CredentialStore (Keychain), ChatSettingsStore
 MacosUtils.Cli/            # "mutils": command table over PcTools
 MacosUtils.App/            # Avalonia: App.axaml (theme), MainWindow.cs (shell), Dialogs.cs, Views/*View.cs, macOS/ (Info.plist, package-app.sh)
@@ -48,7 +48,7 @@ MacosUtils.Tests/
 
 - **Tools by full path, parsed in English.** An app opened from Finder has only `/usr/bin:/bin:/usr/sbin:/sbin`. `Processes` requires a fully qualified path and sets `LC_ALL`/`LANG` to `en_US.UTF-8`. Every parser is a public method taking text, with a test on a captured sample (`ParserTests`): add the sample first when output formats change.
 - **Homebrew is not on PATH in an app.** Runtime detectors also look in `/opt/homebrew` and `/usr/local` (`RuntimeProbe.FindExecutables`). `/usr/bin/java` and `/usr/bin/python3` are Apple stubs that can open an install dialog: never run them and skip `/usr/bin` when searching PATH.
-- **Detectors never start the runtime**; versions come from `release`, `patchlevel.h`, `node_version.h` or folder names.
+- **Detectors never start the runtime**; versions come from `release`, `patchlevel.h`, `node_version.h`, Go's `VERSION`, rustup's `lib/rustlib/multirust-channel-manifest.toml`, Ruby's `rbconfig.rb`, `php_version.h`, Xcode's `Contents/version.plist` and the Command Line Tools receipt, or folder names. `~/.cargo/bin/rustc` is a link to rustup, so it is skipped and the toolchains are listed instead.
 - **Homebrew is read, not run.** `Homebrew` lists `Cellar/<formula>/<version>` (with `INSTALL_RECEIPT.json` for "on request" and the date), `Caskroom/<cask>/<version>` (the cask JSON under `.metadata` names its apps for the size) and `var/homebrew/pinned`. Only `brew --version` runs, and only when `xcode-select -p` finds the Command Line Tools: it calls git, and `/usr/bin/git` without them opens the install dialog.
 - **Battery units differ by chip.** On Apple silicon `CurrentCapacity`/`MaxCapacity` in `AppleSmartBattery` are percentages and the mAh values are `AppleRaw*`; on Intel they are mAh. `ioreg -a` writes a negative `Amperage` as an unsigned 64-bit number, which `Plist` turns back into a negative one. Apple's "Maximum Capacity" and "Condition" come from `system_profiler`; the computed fallback uses `NominalChargeCapacity`. CI runners are VMs without a battery, so only the parser tests cover it.
 - **Developer Caches only trash what is on its list.** `DeveloperCaches.MoveToTrash` accepts a path only if it is exactly one of `Locations(home)`, marked `CanTrash`, and a real folder (not a link). The list stays out of `~/Library/Containers`, `MobileSync` and `~/.Trash`: reading them raises a TCC prompt or needs Full Disk Access. The AI tool only lists sizes.

@@ -212,7 +212,8 @@ public static class RustDetector
 
     private static void TryAdd(RuntimeProbe.Collector collector, string? home, string source)
     {
-        if (home is not null && File.Exists(Path.Combine(home, "bin", "rustc")))
+        // A real toolchain has lib/rustlib; Homebrew's rustup keg only has proxies named rustc, cargo...
+        if (home is not null && File.Exists(Path.Combine(home, "bin", "rustc")) && Directory.Exists(Path.Combine(home, "lib", "rustlib")))
             collector.TryAdd(home, h => Describe(h, source));
     }
 
@@ -242,7 +243,7 @@ public static class RustDetector
 /// asdf, mise, and the old Ruby 2.6 macOS still carries. The version comes from each install's
 /// rbconfig.rb. The first item is the one a terminal runs.
 /// </summary>
-public static class RubyDetector
+public static partial class RubyDetector
 {
     private const string SystemRuby = "/System/Library/Frameworks/Ruby.framework/Versions";
 
@@ -283,13 +284,46 @@ public static class RubyDetector
         {
             foreach (var arch in RuntimeProbe.SubDirectories(api))
             {
-                var version = ToolProbe.QuotedValue(Path.Combine(arch, "rbconfig.rb"), "CONFIG[\"RUBY_PROGRAM_VERSION\"]");
-                if (version is not null)
-                    return version;
+                var file = Path.Combine(arch, "rbconfig.rb");
+                try
+                {
+                    if (File.Exists(file) && new FileInfo(file).Length < 1024 * 1024 && ParseRbConfig(File.ReadLines(file)) is { } version)
+                        return version;
+                }
+                catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+                {
+                }
             }
         }
         return null;
     }
+
+    /// <summary>
+    /// <c>CONFIG["RUBY_PROGRAM_VERSION"]</c> from rbconfig.rb lines, with references such as
+    /// <c>"$(MAJOR).$(MINOR).$(TEENY)"</c> (Homebrew's builds) filled in from the other CONFIG
+    /// entries. Null when it is missing or cannot be filled in. Public for tests.
+    /// </summary>
+    public static string? ParseRbConfig(IEnumerable<string> lines)
+    {
+        var config = new Dictionary<string, string>(StringComparer.Ordinal);
+        foreach (var raw in lines)
+        {
+            var match = RbConfigLine().Match(raw);
+            if (match.Success)
+                config.TryAdd(match.Groups[1].Value, match.Groups[2].Value);
+        }
+        if (!config.TryGetValue("RUBY_PROGRAM_VERSION", out var version))
+            return null;
+        for (var i = 0; i < 5 && version.Contains("$(", StringComparison.Ordinal); i++)
+            version = RbConfigReference().Replace(version, m => config.GetValueOrDefault(m.Groups[1].Value, m.Value));
+        return version.Contains('$') || version.Length == 0 ? null : version;
+    }
+
+    [GeneratedRegex("""^\s*CONFIG\["(\w+)"\]\s*=\s*"([^"]*)"\s*$""")]
+    private static partial Regex RbConfigLine();
+
+    [GeneratedRegex(@"\$\((\w+)\)")]
+    private static partial Regex RbConfigReference();
 
     private static void TryAdd(RuntimeProbe.Collector collector, string? home, string source)
     {

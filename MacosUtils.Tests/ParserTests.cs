@@ -564,6 +564,21 @@ public class ParserTests
         }
     }
 
+    [Fact]
+    public void Homebrew_rbconfig_version_references_are_filled_in()
+    {
+        string[] lines =
+        [
+            "  CONFIG[\"MAJOR\"] = \"3\"",
+            "  CONFIG[\"MINOR\"] = \"4\"",
+            "  CONFIG[\"TEENY\"] = \"12\"",
+            "  CONFIG[\"PATCHLEVEL\"] = \"103\"",
+            "  CONFIG[\"RUBY_PROGRAM_VERSION\"] = \"$(MAJOR).$(MINOR).$(TEENY)\"",
+        ];
+        Assert.Equal("3.4.12", RubyDetector.ParseRbConfig(lines));
+        Assert.Null(RubyDetector.ParseRbConfig(["  CONFIG[\"RUBY_PROGRAM_VERSION\"] = \"$(MAJOR).$(MINOR)\""]));
+    }
+
     [Theory]
     [InlineData("16.0.0.0.1.1724870825", "16.0")]
     [InlineData("14.3.1.0.1.1683849156", "14.3.1")]

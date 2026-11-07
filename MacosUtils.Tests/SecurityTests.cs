@@ -128,4 +128,18 @@ public class SecurityTests
         Assert.False(simulators.CanTrash);
         Assert.Throws<InvalidOperationException>(() => DeveloperCaches.MoveToTrash(simulators.Path));
     }
+
+    [Fact]
+    public void Leftovers_never_trash_what_is_not_a_leftover()
+    {
+        if (!OperatingSystem.IsMacOS())
+        {
+            Assert.Throws<PlatformNotSupportedException>(() => AppLeftovers.MoveToTrash(["com.gone.app"]));
+            return;
+        }
+        // Apple's apps are never leftovers, so the request is refused without moving anything.
+        var (moved, kept) = AppLeftovers.MoveToTrash(["com.apple.Safari"]);
+        Assert.Equal(0, moved);
+        Assert.Single(kept);
+    }
 }

@@ -1,4 +1,5 @@
 using MacosUtils.Core;
+using MacosUtils.Core.IO;
 using MacosUtils.Core.Net;
 using MacosUtils.Core.SystemInfo;
 using Xunit;
@@ -591,5 +592,32 @@ public class ParserTests
     {
         var plist = new Dictionary<string, object?> { ["CFBundleShortVersionString"] = "26.1", ["ProductBuildVersion"] = "17B55" };
         Assert.Equal(("26.1", "17B55"), XcodeDetector.FromVersionPlist(plist));
+    }
+
+    [Theory]
+    [InlineData("Preferences", "com.tinyspeck.slackmacgap.plist", "com.tinyspeck.slackmacgap")]
+    [InlineData("Saved Application State", "us.zoom.xos.savedState", "us.zoom.xos")]
+    [InlineData("HTTPStorages", "com.spotify.client.binarycookies", "com.spotify.client")]
+    [InlineData("Caches", "com.microsoft.VSCode.ShipIt", "com.microsoft.VSCode.ShipIt")]
+    [InlineData("Group Containers", "UBF8T346G9.com.microsoft.teams", "com.microsoft.teams")]
+    [InlineData("Group Containers", "group.net.whatsapp.WhatsApp.shared", "net.whatsapp.WhatsApp.shared")]
+    [InlineData("Group Containers", "UBF8T346G9.Office", null)]
+    [InlineData("Application Support", "Slack", null)]
+    [InlineData("Application Support", "notion.id", null)]
+    [InlineData("Preferences", ".GlobalPreferences.plist", null)]
+    [InlineData("Logs", "1.2.3", null)]
+    public void Leftover_entries_are_matched_by_bundle_id_only(string place, string entry, string? expected) =>
+        Assert.Equal(expected, AppLeftovers.BundleIdFromEntry(place, entry));
+
+    [Fact]
+    public void Spotlight_lines_give_the_app_and_its_bundle_id()
+    {
+        Assert.Equal(("/Applications/Visual Studio Code.app", "com.microsoft.VSCode"),
+            AppLeftovers.ParseSpotlightLine("/Applications/Visual Studio Code.app   kMDItemCFBundleIdentifier = \"com.microsoft.VSCode\""));
+        Assert.Equal(("/Applications/Old.app", (string?)null),
+            AppLeftovers.ParseSpotlightLine("/Applications/Old.app   kMDItemCFBundleIdentifier = (null)"));
+        Assert.Equal(("/Applications/Plain.app", (string?)null), AppLeftovers.ParseSpotlightLine("/Applications/Plain.app"));
+        Assert.Equal(((string?)null, (string?)null), AppLeftovers.ParseSpotlightLine("garbage"));
+        Assert.Equal("com.google", AppLeftovers.Vendor("com.google.Chrome"));
     }
 }

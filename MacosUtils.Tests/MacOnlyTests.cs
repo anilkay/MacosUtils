@@ -178,7 +178,7 @@ public class MacOnlyTests
                      PcTools.GetDotNetVersions(), PcTools.GetJavaVersion(), PcTools.GetPythonVersion(), PcTools.GetNodeVersion(),
                      PcTools.GetGoVersion(), PcTools.GetRustVersion(), PcTools.GetRubyVersion(), PcTools.GetPhpVersion(), PcTools.GetXcodeVersion(),
                      PcTools.GetProcesses(5), PcTools.GetLargestFiles("home", 3, recursive: false), PcTools.GetFolderSizes("home", 3),
-                     PcTools.GetHomebrewPackages(20), PcTools.GetBatteryHealth(), PcTools.GetDeveloperCaches(),
+                     PcTools.GetHomebrewPackages(20), PcTools.GetBatteryHealth(), PcTools.GetDeveloperCaches(), PcTools.GetAppLeftovers(10),
                  })
         {
             Assert.False(string.IsNullOrWhiteSpace(output));

@@ -128,4 +128,32 @@ public sealed class FileTests : IDisposable
         var (_, _, errors) = FileScanner.FindLargestFiles([Path.Combine(_root, "nope")], 5);
         Assert.Single(errors);
     }
+
+    [Fact]
+    public void Leftovers_are_grouped_per_removed_app_and_skip_installed_vendors()
+    {
+        Write("Library/Caches/com.gone.app/cache.db", new byte[1000]);
+        Write("Library/Caches/com.gone.app.helper/x", new byte[24]);
+        Write("Library/Preferences/com.gone.app.plist", new byte[100]);
+        Write("Library/Application Support/com.gone.app/data", new byte[500]);
+        Directory.CreateDirectory(Path.Combine(_root, "Library", "Containers", "com.gone.app"));
+        Directory.CreateDirectory(Path.Combine(_root, "Library", "Group Containers", "ABCDE12345.com.gone.app.shared"));
+        Write("Library/Caches/com.kept.other/x", new byte[10]);          // same vendor as an installed app
+        Write("Library/Caches/com.apple.Safari/x", new byte[10]);         // Apple
+        Write("Library/Caches/org.sparkle-project.Sparkle/x", new byte[10]); // shared framework
+        Write("Library/Caches/org.swift.swiftpm/x", new byte[10]);       // a developer cache
+        Write("Library/Application Support/Slack/x", new byte[10]);      // not a bundle id
+        Write("Library/Logs/io.lone.tool/log.txt", new byte[7]);
+
+        var leftovers = AppLeftovers.Find(_root, ["com.kept.main"]);
+
+        Assert.Equal(["com.gone.app", "io.lone.tool"], leftovers.Select(a => a.BundleId).ToArray());
+        var gone = leftovers[0];
+        Assert.Equal(6, gone.Items.Count);
+        Assert.Equal(1624, gone.SizeBytes);
+        Assert.True(gone.CanTrash);
+        Assert.Equal(2, gone.Items.Count(i => i.Place.Protected));
+        Assert.All(gone.Items.Where(i => i.Place.Protected), i => Assert.Equal(0, i.SizeBytes));
+        Assert.Equal("Application Support, Caches, Containers, Group Containers, Preferences", gone.Places);
+    }
 }

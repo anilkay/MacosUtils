@@ -132,6 +132,13 @@ static class Program
         new("caches", ["cleanup"], "caches", "Developer caches that can be cleared, with sizes (read-only).",
             (_, ct) => Ok(PcTools.GetDeveloperCaches(ct))),
 
+        new("leftovers", ["appleftovers"], "leftovers [n]", "Files that removed apps left in ~/Library, with sizes (read-only).",
+            (a, ct) =>
+            {
+                var n = OptionalInt(a, 0, "count", 50, out var error);
+                return error is not null ? Fail(error) : Ok(PcTools.GetAppLeftovers(n, ct));
+            }),
+
         new("battery", [], "battery", "Battery health, charge and cycle count.",
             (_, _) => Ok(PcTools.GetBatteryHealth())),
 

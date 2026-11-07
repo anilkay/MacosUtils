@@ -71,6 +71,7 @@ public static class PcTools
         new(CreateFunction(new Func<int, CancellationToken, string>(GetHomebrewPackages)), false),
         new(CreateFunction(new Func<string>(GetBatteryHealth)), false),
         new(CreateFunction(new Func<CancellationToken, string>(GetDeveloperCaches)), false),
+        new(CreateFunction(new Func<int, CancellationToken, string>(GetAppLeftovers)), false),
         new(CreateFunction(new Func<string>(GetLocalUsers)), false),
         new(CreateFunction(new Func<string>(GetNetworkAdapters)), false),
         new(CreateFunction(new Func<string>(GetFirewallStatus)), false),
@@ -563,6 +564,41 @@ public static class PcTools
                 + (i.Location.CanTrash ? "" : "Clean with its tool, not the Trash: ") + i.Location.Note).ToList();
             lines.Add($"Total: {ByteFormatter.FormatBytes(items.Where(i => i.Location.CanTrash).Sum(i => i.SizeBytes))} can go to the Trash "
                 + "(Developer Caches screen in the app); the space is freed when the Trash is emptied.");
+            return string.Join(Environment.NewLine, lines);
+        }
+        catch (OperationCanceledException)
+        {
+            throw;
+        }
+        catch (Exception ex)
+        {
+            return $"Error: {ex.Message}";
+        }
+    }
+
+    [Description("Lists files that apps which are no longer installed left in ~/Library (Application Support, Caches, Preferences, "
+        + "Saved Application State, HTTPStorages, WebKit, Logs, Containers, Group Containers), grouped by bundle id, with size and "
+        + "last change. Only bundle-id names are matched, and nothing is listed while an app from the same vendor is installed. "
+        + "Read-only: the user moves them to the Trash in the app.")]
+    public static string GetAppLeftovers(int maxCount = 50, CancellationToken cancellationToken = default)
+    {
+        try
+        {
+            if (!OperatingSystem.IsMacOS())
+                return "App leftovers are only listed on macOS.";
+            var scan = AppLeftovers.Scan(cancellationToken: cancellationToken);
+            var compared = $"Compared with {scan.Installed.Count} installed apps"
+                + (scan.Installed.SearchedSpotlight ? "." : " in /Applications and ~/Applications only (Spotlight found none).");
+            if (scan.Apps.Count == 0)
+                return $"(no leftovers of removed apps found) {compared}";
+            var lines = scan.Apps.Take(Math.Clamp(maxCount, 1, 500)).Select(a =>
+                $"{a.BundleId}: {(a.CanTrash ? ByteFormatter.FormatBytes(a.SizeBytes) : "size not read")} in {a.Places}"
+                + (a.LastWriteUtc == DateTime.MinValue ? "" : $", last changed {a.LastWriteUtc:yyyy-MM-dd}")
+                + (a.CanTrash ? "" : " (protected container: remove it in Finder)")).ToList();
+            if (scan.Apps.Count > lines.Count)
+                lines.Add($"... and {scan.Apps.Count - lines.Count} more.");
+            lines.Add($"Total: {ByteFormatter.FormatBytes(scan.Apps.Sum(a => a.SizeBytes))} from {scan.Apps.Count} removed apps. {compared} "
+                + "They can be moved to the Trash on the App Leftovers screen.");
             return string.Join(Environment.NewLine, lines);
         }
         catch (OperationCanceledException)

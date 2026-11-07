@@ -140,6 +140,9 @@ public sealed class FileTests : IDisposable
         Directory.CreateDirectory(Path.Combine(_root, "Library", "Group Containers", "ABCDE12345.com.gone.app.shared"));
         Write("Library/Caches/com.kept.other/x", new byte[10]);          // same vendor as an installed app
         Write("Library/Caches/com.apple.Safari/x", new byte[10]);         // Apple
+        Write("Library/Preferences/systemgroup.com.apple.icloud.searchpartyd.sharedsettings.plist", new byte[10]);
+        Directory.CreateDirectory(Path.Combine(_root, "Library", "Group Containers", "243LU875E5.groups.com.apple.podcasts"));
+        Directory.CreateDirectory(Path.Combine(_root, "Library", "Group Containers", "group.is.workflow.my.app")); // Shortcuts
         Write("Library/Caches/org.sparkle-project.Sparkle/x", new byte[10]); // shared framework
         Write("Library/Caches/org.swift.swiftpm/x", new byte[10]);       // a developer cache
         Write("Library/Application Support/Slack/x", new byte[10]);      // not a bundle id

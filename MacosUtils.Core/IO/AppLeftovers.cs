@@ -46,8 +46,9 @@ public static partial class AppLeftovers
     private const string SpotlightTool = "/usr/bin/mdfind";
 
     // Vendors whose files are system parts or frameworks shared by many apps, not one app's data.
+    // is.workflow is Apple's Shortcuts (it kept the Workflow app's ids).
     private static readonly string[] SharedVendors =
-        ["com.apple", "org.cups", "org.sparkle-project", "com.plausiblelabs", "io.sentry", "com.crashlytics", "org.swift"];
+        ["com.apple", "is.workflow", "org.cups", "org.sparkle-project", "com.plausiblelabs", "io.sentry", "com.crashlytics", "org.swift"];
 
     // File names add these to the bundle id: com.foo.app.plist, com.foo.app.savedState.
     private static readonly string[] Suffixes = [".plist", ".savedState", ".binarycookies"];
@@ -247,6 +248,9 @@ public static partial class AppLeftovers
 
     private static bool IsShared(string id)
     {
+        // Apple also names files systemgroup.com.apple.* and groups.com.apple.*.
+        if (("." + id + ".").Contains(".com.apple.", StringComparison.OrdinalIgnoreCase))
+            return true;
         var vendor = Vendor(id);
         return SharedVendors.Any(v => vendor.Equals(v, StringComparison.OrdinalIgnoreCase));
     }

@@ -39,7 +39,7 @@ jobs:
                          "firewall" "ports" "startup" "brew 15" "battery" "caches" "leftovers 15" "users" "envlist LoginShell 5" "largest $HOME 3" "foldersize $HOME 3" \
                          "hash /etc/hosts SHA-256"; do
             echo "::group::mutils $command"
-            output=$(dotnet MacosUtils.Cli/bin/Release/net10.0/mutils.dll $command 2>&1) || failed=1
+            output=$(dotnet MacosUtils.Cli/bin/Release/net11.0/mutils.dll $command 2>&1) || failed=1
             echo "$output" | head -30
             if echo "$output" | grep -q '^Error:'; then failed=1; fi
             echo "::endgroup::"
@@ -50,7 +50,7 @@ jobs:
       - name: TCP traceroute with and without root (diagnostic)
         continue-on-error: true
         run: |
-          cli=MacosUtils.Cli/bin/Release/net10.0/mutils.dll
+          cli=MacosUtils.Cli/bin/Release/net11.0/mutils.dll
           echo "--- as $(whoami)"
           dotnet $cli traceroute 1.1.1.1 443 8 --no-names --timeout 1500
           echo "--- as root"

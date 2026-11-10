@@ -1,6 +1,6 @@
 # macOS Utils
 
-The Mac sibling of [WindowsUtils](https://github.com/anilkay/WindowsUtils): small, handy utilities in one window with sidebar navigation, built with [Avalonia](https://avaloniaui.net/) on .NET 10. The same read-only tools are available to an AI assistant (AI Chat), to other apps as a local MCP server, and from a command line (`mutils`).
+The Mac sibling of [WindowsUtils](https://github.com/anilkay/WindowsUtils): small, handy utilities in one window with sidebar navigation, built with [Avalonia](https://avaloniaui.net/) on .NET 11. The same read-only tools are available to an AI assistant (AI Chat), to other apps as a local MCP server, and from a command line (`mutils`).
 
 It follows the Mac: light and dark appearance, `~/Library` folders, the Trash, Finder, the Keychain.
 
@@ -72,7 +72,7 @@ dotnet run --project MacosUtils.Cli -- ports
 
 ## Build & run
 
-Needs the [.NET 10 SDK](https://dotnet.microsoft.com/download).
+Needs the [.NET 11 SDK](https://dotnet.microsoft.com/download).
 
 ```bash
 dotnet build
@@ -94,7 +94,7 @@ open publish/MacosUtils.app
 
 ```
 MacosUtils.slnx
-MacosUtils.Core/   # net10.0, no UI: scanning, hashing, volumes, Trash/Finder, sysctl, launchd, firewall, runtimes
+MacosUtils.Core/   # net11.0, no UI: scanning, hashing, volumes, Trash/Finder, sysctl, launchd, firewall, runtimes
 MacosUtils.AI/     # AI chat session, read-only PcTools, MCP server, Keychain credential store
 MacosUtils.Cli/    # "mutils" command-line tool over PcTools
 MacosUtils.App/    # Avalonia app: MainWindow shell + one Views/*View.cs per utility, macOS/ bundle files

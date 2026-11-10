@@ -6,5 +6,7 @@
     <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
     <Version>0.0.4</Version>
     <IncludeSourceRevisionInInformationalVersion>false</IncludeSourceRevisionInInformationalVersion>
+    <!-- .NET 11 runtime async: the runtime runs async methods instead of compiler-built state machines. Delete to go back. -->
+    <Features>$(Features);runtime-async=on</Features>
   </PropertyGroup>
 </Project>

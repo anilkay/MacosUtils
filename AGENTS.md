@@ -1,6 +1,6 @@
 # MacosUtils
 
-An Avalonia app (.NET 11, `net11.0`) that bundles small macOS utilities in one window with sidebar navigation. It is the Mac port of WindowsUtils (`../WindowsUtils`): same screens and the same "every screen is also an AI tool" rule, with macOS implementations underneath.
+An Avalonia app (.NET 11, `net11.0`, runtime async on in `Directory.Build.props`) that bundles small macOS utilities in one window with sidebar navigation. It is the Mac port of WindowsUtils (`../WindowsUtils`): same screens and the same "every screen is also an AI tool" rule, with macOS implementations underneath.
 
 ## Build & run
 

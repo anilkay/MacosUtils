@@ -729,4 +729,15 @@ public class ParserTests
         var blanket = AppTransportSecurity.Describe("A", "/A.app", new Dictionary<string, object?> { ["NSAllowsArbitraryLoads"] = true });
         Assert.Equal(AtsRisk.High, Assert.Single(blanket).Risk);
     }
+
+    [Fact]
+    public void Tls_negotiated_row_explains_a_handshake_below_what_the_server_accepts()
+    {
+        var probe = new TlsProbeResult("github.com", 443, "1.2.3.4", "TLS 1.2", "X", "CN=github.com", "CN=CA", [],
+            DateTime.Now.AddDays(-1), DateTime.Now.AddDays(60), "None", []);
+        var negotiated = TlsProbe.Describe(probe, [new("TLS 1.3", TlsVersionState.Accepted, "AEAD")]).Single(r => r.Label == "Negotiated");
+        Assert.StartsWith("TLS 1.2 (this handshake used .NET", negotiated.Value);
+        Assert.False(negotiated.Warn);
+        Assert.Equal("TLS 1.2", TlsProbe.Describe(probe, []).Single(r => r.Label == "Negotiated").Value);
+    }
 }

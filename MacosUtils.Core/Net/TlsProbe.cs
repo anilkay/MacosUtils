@@ -192,7 +192,11 @@ public static partial class TlsProbe
         if (r is not null)
         {
             yield return ("Server", $"{r.Host}:{r.Port} ({r.RemoteAddress})", false);
-            yield return ("Negotiated", r.Protocol, r.Protocol is "TLS 1.0" or "TLS 1.1" or "SSL 3.0");
+            // .NET's SslStream on macOS goes through Apple's older TLS API, which stops at TLS 1.2.
+            var serverHas13 = versions.Any(v => v.Version == "TLS 1.3" && v.State == TlsVersionState.Accepted);
+            yield return ("Negotiated", r.Protocol + (serverHas13 && r.Protocol != "TLS 1.3"
+                ? " (this handshake used .NET, which on macOS stops at TLS 1.2; the server accepts TLS 1.3, see below)"
+                : ""), r.Protocol is "TLS 1.0" or "TLS 1.1" or "SSL 3.0");
             yield return ("Cipher suite", r.CipherSuite, false);
             yield return ("Certificate", r.Subject, false);
             yield return ("Issuer", r.Issuer, false);

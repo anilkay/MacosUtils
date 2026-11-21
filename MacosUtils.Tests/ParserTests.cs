@@ -613,11 +613,120 @@ public class ParserTests
     public void Spotlight_lines_give_the_app_and_its_bundle_id()
     {
         Assert.Equal(("/Applications/Visual Studio Code.app", "com.microsoft.VSCode"),
-            AppLeftovers.ParseSpotlightLine("/Applications/Visual Studio Code.app   kMDItemCFBundleIdentifier = \"com.microsoft.VSCode\""));
+            InstalledApplications.ParseSpotlightLine("/Applications/Visual Studio Code.app   kMDItemCFBundleIdentifier = \"com.microsoft.VSCode\""));
         Assert.Equal(("/Applications/Old.app", (string?)null),
-            AppLeftovers.ParseSpotlightLine("/Applications/Old.app   kMDItemCFBundleIdentifier = (null)"));
-        Assert.Equal(("/Applications/Plain.app", (string?)null), AppLeftovers.ParseSpotlightLine("/Applications/Plain.app"));
-        Assert.Equal(((string?)null, (string?)null), AppLeftovers.ParseSpotlightLine("garbage"));
+            InstalledApplications.ParseSpotlightLine("/Applications/Old.app   kMDItemCFBundleIdentifier = (null)"));
+        Assert.Equal(("/Applications/Plain.app", (string?)null), InstalledApplications.ParseSpotlightLine("/Applications/Plain.app"));
+        Assert.Equal(((string?)null, (string?)null), InstalledApplications.ParseSpotlightLine("garbage"));
         Assert.Equal("com.google", AppLeftovers.Vendor("com.google.Chrome"));
+    }
+
+    private const string SClientAccepted = """
+        CONNECTED(00000005)
+        ---
+        New, TLSv1/SSLv3, Cipher is AEAD-AES128-GCM-SHA256
+        Server public key is 256 bit
+        SSL-Session:
+            Protocol  : TLSv1.3
+            Cipher    : AEAD-AES128-GCM-SHA256
+            Session-ID:
+        ---
+        DONE
+        """;
+
+    private const string SClientRefusedOutput = """
+        CONNECTED(00000005)
+        ---
+        no peer certificate available
+        ---
+        New, (NONE), Cipher is (NONE)
+        SSL-Session:
+            Protocol  : TLSv1
+            Cipher    : 0000
+        ---
+        """;
+
+    [Fact]
+    public void SClient_output_tells_accepted_refused_and_untestable_versions_apart()
+    {
+        Assert.Equal(new TlsVersionCheck("TLS 1.3", TlsVersionState.Accepted, "AEAD-AES128-GCM-SHA256"),
+            TlsProbe.ParseSClient("TLS 1.3", new ToolResult(0, SClientAccepted, "")));
+        Assert.Equal(new TlsVersionCheck("TLS 1.0", TlsVersionState.Refused, "protocol version"),
+            TlsProbe.ParseSClient("TLS 1.0", new ToolResult(1, SClientRefusedOutput,
+                "4307490284:error:1404B42E:SSL routines:ST_CONNECT:tlsv1 alert protocol version:/AppleInternal/ssl_pkt.c:1200:\n")));
+        Assert.Equal(TlsVersionState.NotTested,
+            TlsProbe.ParseSClient("TLS 1.0", new ToolResult(1, "", "unknown option -tls1\nusage: s_client args\n")).State);
+        Assert.Equal(new TlsVersionCheck("TLS 1.2", TlsVersionState.Refused, "connection refused"),
+            TlsProbe.ParseSClient("TLS 1.2", new ToolResult(1, "", "connect: Connection refused\nconnect:errno=61\n")));
+    }
+
+    [Theory]
+    [InlineData("https://apple.com", 443)]
+    [InlineData("-oProxyCommand=x", 443)]
+    [InlineData("apple.com/path", 443)]
+    [InlineData("user@apple.com", 443)]
+    [InlineData("", 443)]
+    [InlineData("apple.com", 0)]
+    [InlineData("apple.com", 70000)]
+    public void Tls_check_accepts_only_a_bare_host_and_a_valid_port(string host, int port) =>
+        Assert.Throws<ArgumentException>(() => TlsProbe.Validate(host, port));
+
+    [Fact]
+    public void Tls_check_trims_hosts_and_ipv6_brackets()
+    {
+        Assert.Equal(("apple.com", 443), TlsProbe.Validate(" apple.com ", 443));
+        Assert.Equal(("::1", 8443), TlsProbe.Validate("[::1]", 8443));
+    }
+
+    [Fact]
+    public void Tls_versions_flag_old_ones_a_server_still_accepts()
+    {
+        var rows = TlsProbe.Describe(null,
+        [
+            new("TLS 1.0", TlsVersionState.Accepted, "ECDHE-RSA-AES128-SHA"),
+            new("TLS 1.2", TlsVersionState.Accepted, "ECDHE-RSA-AES128-GCM-SHA256"),
+            new("TLS 1.3", TlsVersionState.Refused, "protocol version"),
+        ]).ToList();
+        Assert.Equal([true, false, false], rows.Select(r => r.Warn).ToArray());
+        Assert.StartsWith("accepted", rows[0].Value);
+    }
+
+    [Fact]
+    public void App_transport_security_exceptions_are_read_from_the_info_plist()
+    {
+        var ats = (Dictionary<string, object?>)Plist.Parse("""
+            <?xml version="1.0" encoding="UTF-8"?>
+            <plist version="1.0"><dict>
+              <key>NSAllowsArbitraryLoads</key><true/>
+              <key>NSAllowsArbitraryLoadsInWebContent</key><true/>
+              <key>NSExceptionDomains</key>
+              <dict>
+                <key>old.example.com</key>
+                <dict>
+                  <key>NSIncludesSubdomains</key><true/>
+                  <key>NSExceptionMinimumTLSVersion</key><string>TLSv1.0</string>
+                  <key>NSExceptionAllowsInsecureHTTPLoads</key><true/>
+                  <key>NSExceptionRequiresForwardSecrecy</key><false/>
+                </dict>
+                <key>strict.example.com</key>
+                <dict><key>NSExceptionMinimumTLSVersion</key><string>TLSv1.3</string></dict>
+              </dict>
+            </dict></plist>
+            """)!;
+
+        var found = AppTransportSecurity.Describe("Old App", "/Applications/Old App.app", ats);
+
+        Assert.Equal(
+        [
+            ("All connections", AtsRisk.Low),          // ignored: a narrower key is set too
+            ("Web views", AtsRisk.Medium),
+            ("old.example.com and subdomains", AtsRisk.Medium),
+            ("old.example.com and subdomains", AtsRisk.High),
+            ("old.example.com and subdomains", AtsRisk.Low),
+        ], found.Select(e => (e.Scope, e.Risk)).ToArray());
+        Assert.Contains("TLS 1.0", found[3].Setting);
+
+        var blanket = AppTransportSecurity.Describe("A", "/A.app", new Dictionary<string, object?> { ["NSAllowsArbitraryLoads"] = true });
+        Assert.Equal(AtsRisk.High, Assert.Single(blanket).Risk);
     }
 }

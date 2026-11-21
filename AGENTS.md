@@ -22,7 +22,7 @@ MacosUtils.Core/
 ├── Plist.cs               # XML plists parsed directly, binary ones via /usr/bin/plutil
 ├── Interop/ObjC.cs        # minimal Objective-C runtime P/Invoke (NSFileManager, NSURL)
 ├── IO/                    # FileScanner, DuplicateFinder, DeveloperCaches, Trash (NSFileManager), Finder (open -R), Volumes, ScanExclusions
-├── Net/                   # NetworkInfo (ping), TcpTraceroute (SYN probes + unprivileged ICMP socket), FirewallInfo (socketfilterfw + lsof)
+├── Net/                   # NetworkInfo (ping), TcpTraceroute (SYN probes + unprivileged ICMP socket), FirewallInfo (socketfilterfw + lsof), TlsProbe (SslStream + openssl s_client)
 ├── Logging/               # daily rolling file logger
 └── SystemInfo/            # SystemDetails (sysctl/vm_stat/CoreGraphics), MacFeatures, StartupItems (launchd), LocalUsers (dscacheutil), Homebrew, Battery (ioreg),
                            # EnvironmentInfo, RuntimeInstallation + RuntimeDetectors (Java/Python/Node/.NET) + DeveloperToolDetectors (Go/Rust/Ruby/PHP/Xcode)
@@ -40,7 +40,7 @@ MacosUtils.Tests/
 - **Dialogs are async** (`Dialogs.ShowAsync/ConfirmAsync/ShowTextAsync`). Confirmations that delete or grant access default to **No** (Return and Escape both answer no).
 - **Reusable logic goes to Core** (no Avalonia references); views only present. Long work runs in `Task.Run` with a `CancellationTokenSource` (cancel the previous run first) and `Progress<T>`; never block the UI thread.
 - **Every screen is also an AI tool**: whatever a screen can show must be a read-only `[Description]` method in `PcTools` (registered in `CreateTools()`), with output capped, paths passed through `ResolveDirectory`/`ToLocalPath`, long scans taking a `CancellationToken`. Add the matching `mutils` command. Chat and the MCP server pick tools up automatically.
-- **Tools that return private data or leave the Mac need approval**: `ReadTextFile`, `GetEnvironmentVariable`, `ListEnvironmentVariables` (values can hold secrets) and `PingHost`/`TraceTcpRoute` (DNS and probes reach other hosts) are `NeedsApproval`. `ChatSession.DescribeToolCall` words the prompt; the test `Tool_list_marks_private_data_and_network_tools_for_approval` pins the set.
+- **Tools that return private data or leave the Mac need approval**: `ReadTextFile`, `GetEnvironmentVariable`, `ListEnvironmentVariables` (values can hold secrets) and `PingHost`/`TraceTcpRoute`/`CheckTlsEndpoint` (DNS and probes reach other hosts) are `NeedsApproval`. `ChatSession.DescribeToolCall` words the prompt; the test `Tool_list_marks_private_data_and_network_tools_for_approval` pins the set.
 - **MCP server**: loopback only (`http://localhost:5199/mcp`), per-start bearer token, `Host`/`Origin` guard, tools annotated read-only; needs the ASP.NET Core runtime (bundled in the self-contained app).
 - **Never delete permanently.** Files go to the Trash via `Trash.MoveToTrash`; a volume without a Trash makes the call fail and the file stays.
 
@@ -60,6 +60,8 @@ MacosUtils.Tests/
 - **Keychain** uses the classic `SecKeychain*` generic-password calls (service "MacosUtils AI Chat", account = endpoint host). They are deprecated but supported; the Keychain test returns quietly when the keychain is locked.
 - **TCP traceroute without root.** `/usr/sbin/traceroute -P tcp` fails for normal users ("pcap_activate() failed": it reads the SYN-ACK through /dev/bpf). `TcpTraceroute` sends ordinary TCP connects with `IP_TTL` set and reads Time Exceeded from an ICMP **datagram** socket (unprivileged on macOS, the one ping uses); root gets a raw socket. Received ICMP packets start with the IPv4 header, which `TryParseIcmpReply` skips. `build.yml` prints a trace with and without sudo to compare.
 - **lsof exits 1** when one `-i` selection matched nothing, even with output for the others: parse its output whatever the exit code.
+- **No system TLS switch on macOS.** WindowsUtils reads Schannel's `SCHANNEL\Protocols` keys; macOS has nothing like it. The TLS versions an app may use are set per app by App Transport Security (`NSAppTransportSecurity` in `Info.plist`, read by `AppTransportSecurity` for the apps `InstalledApplications` finds). Since macOS 10.12 `NSAllowsArbitraryLoads` is ignored when `NSAllowsArbitraryLoadsInWebContent`, `…ForMedia` or `NSAllowsLocalNetworking` is also set. Per-domain keys come in `NSException…`, `NSTemporaryException…` and `NSThirdPartyException…` spellings.
+- **TLS versions are tried with `/usr/bin/openssl s_client -tls1…-tls1_3`** (LibreSSL), not SslStream, which only takes the OS defaults. A refused version still prints `Cipher : 0000`; "unknown option" or "no protocols available" means this Mac's openssl cannot offer the version (reported as not tested). `Processes` closes the tools' stdin, or s_client would wait on the terminal. `TlsProbe.Validate` refuses anything but a bare host (a leading `-` would be read as an openssl option).
 - **root** has `/bin/sh` on every Mac but is disabled unless `dscl . -read /Users/root AuthenticationAuthority` shows a ShadowHash.
 - **XML plists are parsed with DTD processing ignored** and no resolver, so a plist can never make the app fetch apple.com.
 

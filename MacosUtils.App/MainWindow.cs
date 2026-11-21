@@ -26,6 +26,8 @@ public sealed class MainWindow : Window
         new("Network Info", "🌐", "Network interfaces, addresses and a quick ping.", () => new NetworkInfoView()),
         new("TCP Traceroute", "🛰️", "Trace the network path to a host over TCP.", () => new TcpTracerouteView()),
         new("Firewall & Ports", "🛡️", "Application Firewall rules and the ports processes listen on.", () => new FirewallPortsView()),
+        new("TLS Check", "🔐", "A server's TLS versions, cipher and certificate chain.", () => new TlsCheckView()),
+        new("App Transport Security", "🔓", "Apps that allow plain HTTP or TLS below 1.2.", () => new AppTransportSecurityView()),
         new("File Hash Calculator", "#️⃣", "Compute and verify MD5, SHA-1, SHA-256 and SHA-512 hashes.", () => new FileHashView()),
         new("Environment Variables", "🔧", "This app's variables and what a Terminal window sees.", () => new EnvironmentVariablesView()),
         new("Startup Items", "🚀", "Launch agents and daemons that start with the Mac.", () => new StartupItemsView()),

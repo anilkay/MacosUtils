@@ -37,10 +37,10 @@ public class SecurityTests
         var tools = PcTools.CreateTools();
         var gated = tools.Where(t => t.NeedsApproval).Select(t => t.Function.Name).Order(StringComparer.Ordinal).ToArray();
         Assert.Equal(
-            [nameof(PcTools.GetEnvironmentVariable), nameof(PcTools.ListEnvironmentVariables), nameof(PcTools.PingHost),
-                nameof(PcTools.ReadTextFile), nameof(PcTools.TraceTcpRoute)],
+            [nameof(PcTools.CheckTlsEndpoint), nameof(PcTools.GetEnvironmentVariable), nameof(PcTools.ListEnvironmentVariables),
+                nameof(PcTools.PingHost), nameof(PcTools.ReadTextFile), nameof(PcTools.TraceTcpRoute)],
             gated);
-        Assert.All(tools.Where(t => t.Function.Name is nameof(PcTools.PingHost) or nameof(PcTools.TraceTcpRoute)),
+        Assert.All(tools.Where(t => t.Function.Name is nameof(PcTools.PingHost) or nameof(PcTools.TraceTcpRoute) or nameof(PcTools.CheckTlsEndpoint)),
             t => Assert.True(t.OpenWorld));
     }
 

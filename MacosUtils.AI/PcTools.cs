@@ -76,6 +76,7 @@ public static class PcTools
         new(CreateFunction(new Func<string>(GetNetworkAdapters)), false),
         new(CreateFunction(new Func<string>(GetFirewallStatus)), false),
         new(CreateFunction(new Func<string>(GetListeningPorts)), false),
+        new(CreateFunction(new Func<int, CancellationToken, string>(GetAppTransportSecurity)), false),
         // Outbound network calls deserve the same gate as private-data reads: the host name is
         // resolved via DNS, so embedded data (e.g. exfiltrated from an approved file) reaches the
         // attacker's own server, and traceroute probes inner networks. Reads of file contents and
@@ -83,6 +84,7 @@ public static class PcTools
         // ApprovalRequiredAIFunction; the MCP server in its approval gate.
         new(CreateFunction(new Func<string, int, CancellationToken, Task<string>>(PingHost)), true, true),
         new(CreateFunction(new Func<string, int, int, bool, int, CancellationToken, Task<string>>(TraceTcpRoute)), true, true),
+        new(CreateFunction(new Func<string, int, CancellationToken, Task<string>>(CheckTlsEndpoint)), true, true),
         new(CreateFunction(new Func<string, int, string>(ReadTextFile)), true),
         new(CreateFunction(new Func<string, string>(GetEnvironmentVariable)), true),
         new(CreateFunction(new Func<string, int, string>(ListEnvironmentVariables)), true),
@@ -673,6 +675,71 @@ public static class PcTools
         catch (Exception ex)
         {
             return $"Ping failed: {ex.GetBaseException().Message}";
+        }
+    }
+
+    [Description("Checks a server's TLS from this Mac: the protocol and cipher suite a handshake negotiates, the certificate "
+        + "(subject, issuer, names, validity, validation errors) and its chain, and whether TLS 1.0, 1.1, 1.2 and 1.3 are each "
+        + "accepted (tried with macOS's openssl). Only handshakes run; no data is sent and revocation is not checked.")]
+    public static async Task<string> CheckTlsEndpoint(
+        [Description("Host name or IP address, e.g. apple.com. No URL or path.")] string host,
+        [Description("TCP port, 443 for HTTPS.")] int port = 443,
+        CancellationToken cancellationToken = default)
+    {
+        try
+        {
+            (host, port) = TlsProbe.Validate(host, port);
+            var versions = TlsProbe.CheckVersionsAsync(host, port, cancellationToken);
+            TlsProbeResult? result = null;
+            string? failure = null;
+            try
+            {
+                result = await TlsProbe.ProbeAsync(host, port, 10000, cancellationToken);
+            }
+            catch (IOException ex)
+            {
+                failure = ex.Message;
+            }
+            var lines = TlsProbe.Describe(result, await versions).Select(d => $"{d.Label}: {d.Value}").ToList();
+            if (failure is not null)
+                lines.Insert(0, failure);
+            return string.Join(Environment.NewLine, lines);
+        }
+        catch (OperationCanceledException)
+        {
+            throw;
+        }
+        catch (Exception ex)
+        {
+            return $"Error: {ex.GetBaseException().Message}";
+        }
+    }
+
+    [Description("Lists the installed apps whose App Transport Security settings (NSAppTransportSecurity in Info.plist) loosen "
+        + "macOS's default of HTTPS with TLS 1.2+: plain HTTP or old TLS everywhere, per domain, in web views or for media, with a "
+        + "risk level. macOS has no system-wide TLS version switch; this is where apps opt out. Read-only.")]
+    public static string GetAppTransportSecurity(int maxCount = 100, CancellationToken cancellationToken = default)
+    {
+        try
+        {
+            if (!OperatingSystem.IsMacOS())
+                return "App Transport Security is only read on macOS.";
+            var scan = AppTransportSecurity.Scan(cancellationToken: cancellationToken);
+            var lines = scan.Exceptions.Take(Math.Clamp(maxCount, 1, 1000))
+                .Select(e => $"[{e.Risk}] {e.App}: {e.Scope}: {e.Setting}").ToList();
+            if (scan.Exceptions.Count > lines.Count)
+                lines.Add($"... and {scan.Exceptions.Count - lines.Count} more.");
+            lines.Add($"{scan.AppsWithExceptions} of {scan.AppsRead} apps set exceptions"
+                + (scan.SearchedSpotlight ? "." : " (Spotlight found no apps; only /Applications and ~/Applications were read)."));
+            return string.Join(Environment.NewLine, lines);
+        }
+        catch (OperationCanceledException)
+        {
+            throw;
+        }
+        catch (Exception ex)
+        {
+            return $"Error: {ex.Message}";
         }
     }
 

@@ -132,6 +132,22 @@ static class Program
         new("caches", ["cleanup"], "caches", "Developer caches that can be cleared, with sizes (read-only).",
             (_, ct) => Ok(PcTools.GetDeveloperCaches(ct))),
 
+        new("tls", ["tlscheck"], "tls <host> [port]", "A server's TLS: negotiated version, certificate, and TLS 1.0-1.3 support.",
+            async (a, ct) =>
+            {
+                if (a.Length == 0)
+                    return Error("Missing host.", "tls <host> [port]");
+                var port = OptionalInt(a, 1, "port", 443, out var error);
+                return error is not null ? Error(error) : Print(await PcTools.CheckTlsEndpoint(a[0], port, ct));
+            }),
+
+        new("ats", ["transportsecurity"], "ats [n]", "Apps whose App Transport Security allows plain HTTP or TLS below 1.2.",
+            (a, ct) =>
+            {
+                var n = OptionalInt(a, 0, "count", 100, out var error);
+                return error is not null ? Fail(error) : Ok(PcTools.GetAppTransportSecurity(n, ct));
+            }),
+
         new("leftovers", ["appleftovers"], "leftovers [n]", "Files that removed apps left in ~/Library, with sizes (read-only).",
             (a, ct) =>
             {

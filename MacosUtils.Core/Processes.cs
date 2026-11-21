@@ -25,6 +25,8 @@ public static class Processes
     {
         using var process = new Process { StartInfo = CreateStartInfo(tool, arguments) };
         process.Start();
+        // Tools get an empty input: one that reads stdin (openssl s_client) must not wait on the terminal.
+        process.StandardInput.Close();
         // Both pipes are drained concurrently so a full stderr buffer cannot block the tool.
         var output = process.StandardOutput.ReadToEndAsync(cancellationToken);
         var error = process.StandardError.ReadToEndAsync(cancellationToken);
@@ -68,6 +70,7 @@ public static class Processes
     public static void Start(string tool, IEnumerable<string> arguments)
     {
         var info = CreateStartInfo(tool, arguments);
+        info.RedirectStandardInput = false;
         info.RedirectStandardOutput = false;
         info.RedirectStandardError = false;
         using var _ = Process.Start(info);
@@ -80,6 +83,7 @@ public static class Processes
         var info = new ProcessStartInfo(tool)
         {
             UseShellExecute = false,
+            RedirectStandardInput = true,
             RedirectStandardOutput = true,
             RedirectStandardError = true,
             CreateNoWindow = true,

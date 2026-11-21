@@ -1,4 +1,5 @@
 using System.Text.RegularExpressions;
+using MacosUtils.Core.SystemInfo;
 
 namespace MacosUtils.Core.IO;
 
@@ -43,8 +44,6 @@ public sealed record LeftoverScan(IReadOnlyList<AppLeftover> Apps, InstalledApps
 /// </summary>
 public static partial class AppLeftovers
 {
-    private const string SpotlightTool = "/usr/bin/mdfind";
-
     // Vendors whose files are system parts or frameworks shared by many apps, not one app's data.
     // is.workflow is Apple's Shortcuts (it kept the Workflow app's ids).
     private static readonly string[] SharedVendors =
@@ -173,32 +172,9 @@ public static partial class AppLeftovers
     /// <summary>Bundle ids of the apps Spotlight knows plus those in /Applications and ~/Applications.</summary>
     public static InstalledApps FindInstalledApps(CancellationToken cancellationToken = default)
     {
-        var ids = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
-        var apps = new HashSet<string>(StringComparer.Ordinal);
-        var output = Processes.TryRun(SpotlightTool,
-            ["-attr", "kMDItemCFBundleIdentifier", "kMDItemContentType == 'com.apple.application-bundle'"], TimeSpan.FromSeconds(30));
-        foreach (var line in (output ?? "").Split('\n', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries))
-        {
-            var (path, id) = ParseSpotlightLine(line);
-            if (path is null || !apps.Add(path))
-                continue;
-            id ??= InfoPlistBundleId(path);
-            if (id is not null)
-                ids.Add(id);
-        }
-        var searchedSpotlight = apps.Count > 0;
-
-        var home = AppPaths.Home;
-        foreach (var folder in new[] { "/Applications", Path.Combine(home, "Applications") })
-        {
-            cancellationToken.ThrowIfCancellationRequested();
-            foreach (var app in AppBundles(folder).Where(apps.Add))
-            {
-                if (InfoPlistBundleId(app) is { } id)
-                    ids.Add(id);
-            }
-        }
-        return new InstalledApps(ids, apps.Count, searchedSpotlight);
+        var found = InstalledApplications.Find(cancellationToken);
+        var ids = found.Apps.Select(a => a.BundleId).OfType<string>().ToHashSet(StringComparer.OrdinalIgnoreCase);
+        return new InstalledApps(ids, found.Apps.Count, found.SearchedSpotlight);
     }
 
     /// <summary>
@@ -234,16 +210,6 @@ public static partial class AppLeftovers
         var first = bundleId.IndexOf('.');
         var second = first < 0 ? -1 : bundleId.IndexOf('.', first + 1);
         return second < 0 ? bundleId : bundleId[..second];
-    }
-
-    /// <summary>Splits a line of "mdfind -attr kMDItemCFBundleIdentifier": the app's path and its id (null when Spotlight has none). Public for tests.</summary>
-    public static (string? Path, string? BundleId) ParseSpotlightLine(string line)
-    {
-        var match = SpotlightLine().Match(line);
-        if (!match.Success)
-            return line.EndsWith(".app", StringComparison.Ordinal) && line.StartsWith('/') ? (line, null) : (null, null);
-        var id = match.Groups["id"].Value.Trim().Trim('"');
-        return (match.Groups["path"].Value, id.Length == 0 || id == "(null)" ? null : id);
     }
 
     private static bool IsShared(string id)
@@ -285,31 +251,10 @@ public static partial class AppLeftovers
         }
     }
 
-    // *.app in a folder and one level below it (/Applications/Utilities, vendor folders).
-    private static IEnumerable<string> AppBundles(string folder)
-    {
-        foreach (var entry in EntryNames(folder))
-        {
-            if (entry.EndsWith(".app", StringComparison.OrdinalIgnoreCase))
-                yield return entry;
-            else if (Directory.Exists(entry))
-            {
-                foreach (var nested in EntryNames(entry).Where(e => e.EndsWith(".app", StringComparison.OrdinalIgnoreCase)))
-                    yield return nested;
-            }
-        }
-    }
-
-    private static string? InfoPlistBundleId(string app) =>
-        Plist.ReadTopLevelStrings(Path.Combine(app, "Contents", "Info.plist")).GetValueOrDefault("CFBundleIdentifier");
-
     // At least three parts and a domain-like first part: com.foo.app, us.zoom.xos. "notion.id" and "Office" are not matched.
     [GeneratedRegex(@"^[A-Za-z]{2,}(\.[A-Za-z0-9_-]+){2,}$")]
     private static partial Regex BundleIdPattern();
 
     [GeneratedRegex(@"^[A-Z0-9]{10}\.")]
     private static partial Regex TeamIdPrefix();
-
-    [GeneratedRegex(@"^(?<path>/.+?\.app)\s+kMDItemCFBundleIdentifier\s*=\s*(?<id>.*)$")]
-    private static partial Regex SpotlightLine();
 }
